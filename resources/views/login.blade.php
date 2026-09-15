@@ -93,9 +93,8 @@
                     </fieldset>
                 </form>
                 <div class="clearfix"></div>
-                <hr>
-                <p class="text-center"><a href="signup">Teacher / Student? Register with your secret code</a></p>
                 @if (isset($hasAdmin) && !$hasAdmin)
+                    <hr>
                     <p class="text-center"><a href="setup">No admin yet? Create the first administrator account</a></p>
                 @endif
             </div>

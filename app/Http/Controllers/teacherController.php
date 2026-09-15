@@ -197,22 +197,24 @@ class teacherController extends BaseController {
 			//echo request()->photo->move(public_path('images/'), $fileName);
 
 
+			$baseLogin = Input::get('fname') . '_' . Input::get('lname');
+			$tLogin = $baseLogin;
+			$counter = 1;
+			while (User::where('login', $tLogin)->exists()) {
+				$counter++;
+				$tLogin = $baseLogin . $counter;
+			}
+
 			$user = new User;
 			$user->firstname = Input::get('fname');
-			$user->lastname  = Input::get('lname');
-			if( Input::get('lname')==''){
-				$user->lastname='';
-			}
-
-			$user->email     =     Input::get('emails');
-			if(Input::get('emails')==''){
-				$user->email = "";
-			}
-
-			$user->login     = Input::get('fname').'_'.Input::get('lname');
+			$user->lastname  = Input::get('lname') ?: '';
+			$user->email     = Input::get('emails') ?: null;
+			$user->login     = $tLogin;
 			$user->group     = 'Teacher';
 			$user->group_id  = $teacher->id;
-			$user->password  =	Hash::make(Input::get('phne'));
+			$user->phone     = Input::get('phne') ?: '';
+			$user->access    = 1;
+			$user->password  = Hash::make(Input::get('phne') ?: 'Teacher@123');
 			$user->save();
 
 			/*$ictcore_integration = Ictcore_integration::select("*")->first();
@@ -1083,76 +1085,86 @@ class teacherController extends BaseController {
 
 	public function access($id)
 	{
-	   $teacher= Teacher::find($id);
-	   if(!empty($teacher) && $teacher->count()>0){
-	   	$chk_teacher  = User::where('login',$teacher->firstName.$teacher->lastName)->where('group_id',$teacher->id)->first();
-	      if($chk_teacher  = User::where('login',$teacher->firstName.$teacher->lastName)->where('group_id',$teacher->id)->count()>0){
-	      	   return Redirect::to('/teacher/list')->with("error","Already have Accessed .");
+		if (!Auth::check() || Auth::user()->group != 'Admin') {
+			return Redirect::to('/teacher/list')->with("error", "Access denied. Only administrators can sign up teachers.");
+		}
 
-	      }
-	        if( $teacher->email!=''){
-	        	$email = $teacher->email;
-	        }else{
-	        	$email = $teacher->phone;
-	        }
-	        $user = new User;
-	        $user->firstname = $teacher->firstName;
-	        $user->lastname  = $teacher->lastName;
-	        $user->email     = NULL;
-	      	$user->login     = $teacher->firstName.$teacher->lastName;
-	      	$user->group     =  'Teacher';
-	      	$user->group_id  = $teacher->id ;
-	      	$user->access    = 1 ;
-	        $user->password  =	Hash::make($teacher->phone);
-	        $user->save();
+		$teacher = Teacher::find($id);
+		if (!$teacher) {
+			return Redirect::to('/teacher/list')->with("error", "Teacher not found.");
+		}
 
-	            $ictcore_integration = Ictcore_integration::select("*")->first();
-	                 
-				if(!empty($ictcore_integration) && $ictcore_integration->ictcore_url !='' && $ictcore_integration->ictcore_user !='' && $ictcore_integration->ictcore_password !=''){ 
+		$existingUser = User::where('group', 'Teacher')->where('group_id', $teacher->id)->first();
+		if ($existingUser) {
+			return Redirect::to('/useredit/' . $existingUser->id)->with("error", "Teacher already has a user account (Username: {$existingUser->login}). You can edit it here.");
+		}
 
-					 $ict  = new ictcoreController();
-					 	$data = array(
-						'first_name' => $teacher->firstName,
-						'last_name' => $teacher->lastName,
-						'phone'     => $teacher->phone,
-						'email'     => '',
-						);
-						$contact_id = $ict->ictcore_api('contacts','POST',$data );
+		$cleanFirst = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $teacher->firstName));
+		$cleanLast  = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $teacher->lastName));
+		$baseLogin = $cleanFirst . ($cleanLast ? '.' . $cleanLast : '');
+		if (empty($baseLogin)) {
+			$baseLogin = 'teacher' . $teacher->id;
+		}
+		$login = $baseLogin;
+		$counter = 1;
+		while (User::where('login', $login)->exists()) {
+			$counter++;
+			$login = $baseLogin . $counter;
+		}
 
-	                   $message = 'School name'.'<br>'.'Login Name: '.  $teacher->firstName.$teacher->lastName.' Password: '.$teacher->phone;
-	                    $data = array(
-						'name' => 'School Name',
-						'data' => $message,
-						'type'     => 'plain',
-						'description'     => 'testing message',
-						);
+		$plainPassword = !empty($teacher->phone) ? $teacher->phone : 'Teacher@123';
 
-	                  $text_id = $ict->ictcore_api('messages/texts','POST',$data );
+		$user = new User;
+		$user->firstname = $teacher->firstName;
+		$user->lastname  = $teacher->lastName ?: '';
+		$user->email     = !empty($teacher->email) ? $teacher->email : null;
+		$user->login     = $login;
+		$user->group     = 'Teacher';
+		$user->group_id  = $teacher->id;
+		$user->phone     = !empty($teacher->phone) ? $teacher->phone : '';
+		$user->access    = 1;
+		$user->password  = Hash::make($plainPassword);
+		$user->save();
 
-	                  $data = array(
-						'name' => 'School Name',
-						'text_id' => $text_id
-						);
+		$ictcore_integration = Ictcore_integration::select("*")->first();
+		if (!empty($ictcore_integration) && $ictcore_integration->ictcore_url != '' && $ictcore_integration->ictcore_user != '' && $ictcore_integration->ictcore_password != '') {
+			try {
+				$ict = new ictcoreController();
+				$data = array(
+					'first_name' => $teacher->firstName,
+					'last_name'  => $teacher->lastName,
+					'phone'      => $teacher->phone,
+					'email'      => '',
+				);
+				$contact_id = $ict->ictcore_api('contacts', 'POST', $data);
+				$message = 'The Mango Tree Girls School' . '<br>' . 'Login Name: ' . $user->login . ' Password: ' . $plainPassword;
+				$data = array(
+					'name'        => 'School Name',
+					'data'        => $message,
+					'type'        => 'plain',
+					'description' => 'User credentials',
+				);
+				$text_id = $ict->ictcore_api('messages/texts', 'POST', $data);
+				$data = array(
+					'name'    => 'School Name',
+					'text_id' => $text_id
+				);
+				$program_id = $ict->ictcore_api('programs/sendsms', 'POST', $data);
+				$data = array(
+					'title'      => 'User Detail',
+					'program_id' => $program_id,
+					'account_id' => 1,
+					'contact_id' => $contact_id,
+					'origin'     => 1,
+					'direction'  => 'outbound',
+				);
+				$ict->ictcore_api('transmissions', 'POST', $data);
+			} catch (\Exception $e) {
+				// Ignore integration error
+			}
+		}
 
-	                    $program_id = $ict->ictcore_api('programs/sendsms','POST',$data );
-
-						$data = array(
-						'title' => 'User Detail',
-						'program_id' => $program_id,
-						'account_id'     => 1,
-						'contact_id'     => $contact_id,
-						'origin'     => 1,
-						'direction'     => 'outbound',
-						);
-						$transmission_id = $ict->ictcore_api('transmissions','POST',$data );
-						
-	             
-	            }
-
-	   	   return Redirect::to('/teacher/list')->with("success","Student Moblie Access Created.");
-
-	   }
-	   return Redirect::to('/teacher/list')->with("error","Student not found.");
+		return Redirect::to('/teacher/list')->with("success", "Teacher {$teacher->firstName} {$teacher->lastName} signed up successfully! Username: {$user->login} | Password: {$plainPassword}");
 	}
 	/**
     * Diary Show

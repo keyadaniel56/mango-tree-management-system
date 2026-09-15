@@ -20,12 +20,19 @@ class UsersController extends BaseController {
 
   use AuthenticatesUsers;
   public function __construct() {
-    /*$this->beforeFilter('csrf', array('on'=>'post'));
-    $this->beforeFilter('auth', array('only'=>array('show','create','edit','update')));
-    $this->beforeFilter('userAccess',array('only'=> array('show','create','edit','update','delete')));*/
-    //5.5
-    //$this->middleware('csrf', array('on'=>'post'));
-    $this->middleware('auth', array('only'=>array('show','create','edit','update','showCodes','generateRegistrationCode','deleteCode')));
+    $this->middleware('auth', array('only'=>array('show','create','edit','update','delete','showCodes','generateRegistrationCode','deleteCode')));
+  }
+
+  /**
+   * Ensure the currently authenticated user is an administrator.
+   *
+   * @return bool
+   */
+  protected function ensureAdmin() {
+    if (!Auth::check() || Auth::user()->group != 'Admin') {
+      return false;
+    }
+    return true;
   }
   /**
   * Display a listing of the resource.
@@ -302,338 +309,267 @@ $institute->name="The Mango Tree Girls School";
     }
   }
 
-  public  function show()
+  public function show()
   {
-    //User::create(array('firstname'=>'Mr.','lastname'=>'kashif','login'=>'ictkashif','email' => 'kashif@ictinnovations.com','group'=>'Admin','desc'=>'admin Deatils Here',"password"=> Hash::make("123456")));
-    $users= User::all();
-    $user=array();
-    //return View::Make('app.users',compact('users','user'));
-    return View('app.users',compact('users','user'));
+    if (!$this->ensureAdmin()) {
+      return Redirect::to('/dashboard')->with('error', 'Access denied. Only administrators can manage users and assign roles.');
+    }
+    $users = User::orderBy('id', 'desc')->get();
+    $user = null;
+    $teachers = Teacher::select('id', 'firstName', 'lastName', 'phone', 'email')->orderBy('firstName')->get();
+    $students = Student::select('id', 'regiNo', 'firstName', 'lastName')->orderBy('regiNo')->get();
+    return View('app.users', compact('users', 'user', 'teachers', 'students'));
   }
-  public  function create()
-  {
-    $rules=[
-      'firstname' => 'required',
-      'lastname' => 'required',
-      'email' => 'required|email',
-      'group' => 'required',
-      'desc' => 'required',
-      'login' => 'required',
-      'password' => 'required'
 
+  public function create()
+  {
+    if (!$this->ensureAdmin()) {
+      return Redirect::to('/dashboard')->with('error', 'Access denied. Only administrators can manage users and assign roles.');
+    }
+    $rules = [
+      'firstname' => 'required',
+      'lastname'  => 'nullable',
+      'email'     => 'nullable|email',
+      'group'     => 'required|in:Admin,Teacher,Student,Accountant,Director,Staff',
+      'desc'      => 'nullable',
+      'login'     => 'required|unique:users,login',
+      'password'  => 'required|min:4'
     ];
     $validator = \Validator::make(Input::all(), $rules);
-    if ($validator->fails())
-    {
+    if ($validator->fails()) {
       return Redirect::to('/users')->withInput(Input::all())->withErrors($validator);
     }
-    else {
 
-      $uexits = User::select('*')->where('email','=',Input::get('email'))->where('login','=',Input::get('login'))->get();
-    //  dd($uexits );
-     //echo "<pre>";print_r($uexits);exit;
-      if(count($uexits)>0)
-      {
-        $errorMessages = new \Illuminate\Support\MessageBag;
-        $errorMessages->add('deplicate', 'User all ready exists with this email or login');
-        return Redirect::to('/users')->withInput(Input::all())->withErrors($errorMessages);
-
+    $email = Input::get('email');
+    if (!empty($email)) {
+      if (User::where('email', $email)->exists()) {
+        return Redirect::to('/users')->withInput(Input::all())->withErrors(['email' => 'User already exists with this email address.']);
       }
-      {
-        $user = new User;
-        $user->firstname = Input::get('firstname');
-        $user->lastname = Input::get('lastname');
-        $user->login = Input::get('login');
-        $user->desc = Input::get('desc');
-        $user->email = Input::get('email');
-        $user->group = Input::get('group');
-        $user->password = Hash::make(Input::get('password'));
-        $user->save();
-        
-        return Redirect::to('/users')->with("success","User Created Succesfully.");
-      }
-
-
     }
+
+    $user = new User;
+    $user->firstname = Input::get('firstname');
+    $user->lastname  = Input::get('lastname') ?: '';
+    $user->login     = Input::get('login');
+    $user->desc      = Input::get('desc') ?: '';
+    $user->email     = $email ?: null;
+    $user->group     = Input::get('group');
+    $user->access    = 1;
+    $user->password  = Hash::make(Input::get('password'));
+
+    if ($user->group == 'Teacher' && Input::get('teacher_id')) {
+      $user->group_id = (int) Input::get('teacher_id');
+      $teacher = Teacher::find($user->group_id);
+      if ($teacher && !empty($teacher->phone)) {
+        $user->phone = $teacher->phone;
+      }
+    } elseif ($user->group == 'Student' && Input::get('student_id')) {
+      $user->group_id = (int) Input::get('student_id');
+      $student = Student::find($user->group_id);
+      if ($student) {
+        $user->regiNo = $student->regiNo;
+      }
+    }
+
+    $user->save();
+    return Redirect::to('/users')->with("success", "User '{$user->login}' created successfully with role '{$user->group}'.");
   }
+
   public function edit($id)
   {
+    if (!$this->ensureAdmin()) {
+      return Redirect::to('/dashboard')->with('error', 'Access denied. Only administrators can manage users and assign roles.');
+    }
     $user = User::find($id);
-    $users= User::all();
-    //return View::Make('app.users',compact('users','user'));
-     return View('app.users',compact('users','user'));
+    if (!$user) {
+      return Redirect::to('/users')->with('error', 'User not found.');
+    }
+    $users = User::orderBy('id', 'desc')->get();
+    $teachers = Teacher::select('id', 'firstName', 'lastName', 'phone', 'email')->orderBy('firstName')->get();
+    $students = Student::select('id', 'regiNo', 'firstName', 'lastName')->orderBy('regiNo')->get();
+    return View('app.users', compact('users', 'user', 'teachers', 'students'));
   }
-  public  function update()
-  {
-    $rules=[
-      'firstname' => 'required',
-      'lastname'  => 'required',
-      'email'     => 'required|email',
-      'group'     => 'required',
-      'desc'      => 'required',
-      'login'     => 'required',
-      'password'  => 'required'
 
+  public function update()
+  {
+    if (!$this->ensureAdmin()) {
+      return Redirect::to('/dashboard')->with('error', 'Access denied. Only administrators can manage users and assign roles.');
+    }
+    $userId = Input::get('id');
+    $rules = [
+      'id'        => 'required|exists:users,id',
+      'firstname' => 'required',
+      'lastname'  => 'nullable',
+      'email'     => 'nullable|email',
+      'group'     => 'required|in:Admin,Teacher,Student,Accountant,Director,Staff',
+      'desc'      => 'nullable',
+      'login'     => 'required|unique:users,login,' . $userId,
+      'password'  => 'nullable|min:4'
     ];
     $validator = \Validator::make(Input::all(), $rules);
-    if ($validator->fails())
-    {
-      return Redirect::to('/usersedit/'.Input::get('id'))->withErrors($validator);
+    if ($validator->fails()) {
+      return Redirect::to('/useredit/' . $userId)->withInput(Input::all())->withErrors($validator);
     }
-    else {
 
-      $uexits = User::select('*')->orwhere('email','=',Input::get('email'))->first();
-      if($uexits->count()>0) {
+    $email = Input::get('email');
+    if (!empty($email)) {
+      if (User::where('email', $email)->where('id', '!=', $userId)->exists()) {
+        return Redirect::to('/useredit/' . $userId)->withInput(Input::all())->withErrors(['email' => 'Another user already exists with this email address.']);
+      }
+    }
 
-        if ($uexits->id != Input::get('id')) {
-          $errorMessages = new \Illuminate\Support\MessageBag;
-          $errorMessages->add('deplicate', 'User all ready exists with this email');
-          return Redirect::to('/users')->withInput(Input::all())->withErrors($errorMessages);
-        } else {
-          $user            = User::find(Input::get('id'));
-          $user->firstname = Input::get('firstname');
-          $user->lastname  = Input::get('lastname');
-          $user->login     = Input::get('login');
-          $user->desc      = Input::get('desc');
-          $user->email     = Input::get('email');
-          $user->group     = Input::get('group');
-          $user->password  = Hash::make(Input::get('password'));
-          $user->save();
-          return Redirect::to('/users')->with("success", "User Updated Succesfully.");
+    $user = User::find($userId);
+    $user->firstname = Input::get('firstname');
+    $user->lastname  = Input::get('lastname') ?: '';
+    $user->login     = Input::get('login');
+    $user->desc      = Input::get('desc') ?: '';
+    $user->email     = $email ?: null;
+    $user->group     = Input::get('group');
+
+    if (!empty(Input::get('password'))) {
+      $user->password = Hash::make(Input::get('password'));
+    }
+
+    if ($user->group == 'Teacher') {
+      if (Input::get('teacher_id')) {
+        $user->group_id = (int) Input::get('teacher_id');
+        $teacher = Teacher::find($user->group_id);
+        if ($teacher && !empty($teacher->phone)) {
+          $user->phone = $teacher->phone;
         }
       }
-      else
-      {
-        $user = User::find(Input::get('id'));
-        $user->firstname = Input::get('firstname');
-        $user->lastname = Input::get('lastname');
-        $user->login = Input::get('login');
-        $user->desc = Input::get('desc');
-        $user->email = Input::get('email');
-        $user->group = Input::get('group');
-        $user->password = Hash::make(Input::get('password'));
-        $user->save();
-        return Redirect::to('/users')->with("success", "User Updated Succesfully.");
+    } elseif ($user->group == 'Student') {
+      if (Input::get('student_id')) {
+        $user->group_id = (int) Input::get('student_id');
+        $student = Student::find($user->group_id);
+        if ($student) {
+          $user->regiNo = $student->regiNo;
+        }
       }
-
+    } else {
+      $user->group_id = null;
     }
+
+    $user->save();
+    return Redirect::to('/users')->with("success", "User '{$user->login}' updated successfully. Role assigned: '{$user->group}'.");
   }
 
   public function delete($id)
   {
-    $user= User::find($id);
-    $user->delete();
-    return Redirect::to('/users')->with("success","User Deleted Succesfully.");
-
+    if (!$this->ensureAdmin()) {
+      return Redirect::to('/dashboard')->with('error', 'Access denied. Only administrators can manage users.');
+    }
+    if (Auth::id() == $id) {
+      return Redirect::to('/users')->with('error', 'You cannot delete your own active administrator account.');
+    }
+    $user = User::find($id);
+    if ($user) {
+      $login = $user->login;
+      $user->delete();
+      return Redirect::to('/users')->with("success", "User '{$login}' deleted successfully.");
+    }
+    return Redirect::to('/users')->with("error", "User not found.");
   }
 
-   public function generateCode($codeLength = 4)
-   {
-        $min = pow(10, $codeLength);
-        $max = $min * 10 - 1;
-        $code = mt_rand($min, $max);
+  public function generateCode($codeLength = 4)
+  {
+    $min = pow(10, $codeLength);
+    $max = $min * 10 - 1;
+    return mt_rand($min, $max);
+  }
 
-        return $code;
-    }
-
-   /**
-   * Signup page for teachers/students using a secret registration code.
-   *
-   * @return Response
+  /**
+   * Self-registration is disabled. Only administrators can sign up users.
    */
-   public function showSignup()
-   {
-     $institute = Institute::select('name')->first();
-     if(!$institute) {
-       $institute = new Institute;
-       $institute->name = "The Mango Tree Girls School";
-     }
-     return view('auth.signup', compact('institute'));
-   }
+  public function showSignup()
+  {
+    return Redirect::to('/')->with('error', 'Self-registration is disabled. Only administrators can sign up teachers and students.');
+  }
 
-   public function processSignup(request $request)
-   {
-     $rules = [
-       'code'     => 'required|max:32',
-       'login'    => 'required|max:20|unique:users,login',
-       'email'    => 'nullable|email|max:100',
-       'password' => 'required|min:6|max:64',
-       'confirm'  => 'required|same:password',
-     ];
-     $validator = \Validator::make(Input::all(), $rules);
-     if ($validator->fails()) {
-       return Redirect::to('/signup')->withInput(Input::all())->withErrors($validator);
-     }
+  public function processSignup(request $request)
+  {
+    return Redirect::to('/')->with('error', 'Self-registration is disabled. Only administrators can sign up teachers and students.');
+  }
 
-     $rCode = RegistrationCode::where('code', Input::get('code'))->first();
-     if (!$rCode || $rCode->status != 'unused' || ($rCode->expires_at && $rCode->expires_at < Carbon::now())) {
-       return Redirect::to('/signup')->withInput(Input::all())->with('error', 'The registration code is invalid, already used or expired.');
-     }
-
-     $role = $rCode->role;
-     $person = $role == 'Teacher' ? Teacher::find($rCode->group_id) : Student::find($rCode->group_id);
-     if (!$person) {
-       return Redirect::to('/signup')->withInput(Input::all())->with('error', 'The account linked to this code no longer exists.');
-     }
-
-     $existing = User::where('group', $role)->where('group_id', $rCode->group_id)->count();
-     if ($existing > 0) {
-       return Redirect::to('/signup')->withInput(Input::all())->with('error', 'An account already exists for this person.');
-     }
-
-     $user = new User;
-     $user->firstname = $person->firstName;
-     $user->lastname  = $person->lastName;
-     $user->desc      = '';
-     $user->login     = Input::get('login');
-     $user->email     = Input::get('email') ?: NULL;
-     $user->group     = $role;
-     $user->group_id  = $rCode->group_id;
-     $user->access    = 1;
-     $user->password  = Hash::make(Input::get('password'));
-     $user->save();
-
-     $rCode->status   = 'used';
-     $rCode->used_by  = $user->id;
-     $rCode->used_at  = Carbon::now();
-     $rCode->save();
-
-     if (\Auth::loginUsingId($user->id)) {
-       $name = $user->firstname.' '.$user->lastname;
-       \Session::put('name', $name);
-       \Session::put('userRole', $user->group);
-       $institute = Institute::select('name')->first();
-       \Session::put('inName', $institute ? $institute->name : '');
-       return Redirect::to($this->roleDashboard())->with('success', 'Signup complete. You are now logged in.');
-     }
-
-     return Redirect::to('/')->with('success', 'Account created successfully. You can now login.');
-   }
-
-   /**
+  /**
    * First-run admin bootstrap page (only available when no admin exists).
    *
    * @return Response
    */
-   public function showSetup()
-   {
-     if (User::where('group', 'Admin')->count() > 0) {
-       return Redirect::to('/');
-     }
-     $institute = Institute::select('name')->first();
-     if(!$institute) {
-       $institute = new Institute;
-       $institute->name = "The Mango Tree Girls School";
-     }
-     return view('auth.setup', compact('institute'));
-   }
+  public function showSetup()
+  {
+    if (User::where('group', 'Admin')->count() > 0) {
+      return Redirect::to('/');
+    }
+    $institute = Institute::select('name')->first();
+    if(!$institute) {
+      $institute = new Institute;
+      $institute->name = "The Mango Tree Girls School";
+    }
+    return view('auth.setup', compact('institute'));
+  }
 
-   public function processSetup(request $request)
-   {
-     if (User::where('group', 'Admin')->count() > 0) {
-       return Redirect::to('/')->with('error', 'An administrator account already exists.');
-     }
+  public function processSetup(request $request)
+  {
+    if (User::where('group', 'Admin')->count() > 0) {
+      return Redirect::to('/')->with('error', 'An administrator account already exists.');
+    }
 
-     if (Input::get('setup_key') != \Config::get('app.admin_setup_key')) {
-       return Redirect::to('/setup')->withInput(Input::all())->with('error', 'The setup key is incorrect.');
-     }
+    if (Input::get('setup_key') != \Config::get('app.admin_setup_key')) {
+      return Redirect::to('/setup')->withInput(Input::all())->with('error', 'The setup key is incorrect.');
+    }
 
-     $rules = [
-       'firstname' => 'required|max:20',
-       'lastname'  => 'required|max:20',
-       'login'     => 'required|max:20|unique:users,login',
-       'email'     => 'required|email|max:100',
-       'password'  => 'required|min:6|max:64',
-       'confirm'   => 'required|same:password',
-     ];
-     $validator = \Validator::make(Input::all(), $rules);
-     if ($validator->fails()) {
-       return Redirect::to('/setup')->withInput(Input::all())->withErrors($validator);
-     }
+    $rules = [
+      'firstname' => 'required|max:20',
+      'lastname'  => 'required|max:20',
+      'login'     => 'required|max:20|unique:users,login',
+      'email'     => 'required|email|max:100',
+      'password'  => 'required|min:6|max:64',
+      'confirm'   => 'required|same:password',
+    ];
+    $validator = \Validator::make(Input::all(), $rules);
+    if ($validator->fails()) {
+      return Redirect::to('/setup')->withInput(Input::all())->withErrors($validator);
+    }
 
-     $user = new User;
-     $user->firstname = Input::get('firstname');
-     $user->lastname  = Input::get('lastname');
-     $user->desc      = '';
-     $user->login     = Input::get('login');
-     $user->email     = Input::get('email');
-     $user->group     = 'Admin';
-     $user->access    = 1;
-     $user->password  = Hash::make(Input::get('password'));
-     $user->save();
+    $user = new User;
+    $user->firstname = Input::get('firstname');
+    $user->lastname  = Input::get('lastname');
+    $user->desc      = '';
+    $user->login     = Input::get('login');
+    $user->email     = Input::get('email');
+    $user->group     = 'Admin';
+    $user->access    = 1;
+    $user->password  = Hash::make(Input::get('password'));
+    $user->save();
 
-     \Session::put('name', $user->firstname.' '.$user->lastname);
-     \Session::put('userRole', 'Admin');
-     $institute = Institute::select('name')->first();
-     \Session::put('inName', $institute ? $institute->name : 'The Mango Tree Girls School');
+    \Session::put('name', $user->firstname.' '.$user->lastname);
+    \Session::put('userRole', 'Admin');
+    $institute = Institute::select('name')->first();
+    \Session::put('inName', $institute ? $institute->name : 'The Mango Tree Girls School');
 
-     if (\Auth::loginUsingId($user->id)) {
-       return Redirect::to('/dashboard')->with('success', 'Administrator account created. Welcome!');
-     }
-     return Redirect::to('/')->with('success', 'Administrator account created. You can now login.');
-   }
+    if (\Auth::loginUsingId($user->id)) {
+      return Redirect::to('/dashboard')->with('success', 'Administrator account created. Welcome!');
+    }
+    return Redirect::to('/')->with('success', 'Administrator account created. You can now login.');
+  }
 
-   /**
-   * Admin page listing all registration codes and code generation.
-   *
-   * @return Response
+  /**
+   * Code-based registration has been deprecated. Redirect to Users management.
    */
-   public function showCodes()
-   {
-     if (\Auth::user()->group != 'Admin') {
-       return Redirect::to('/');
-     }
-     $codes    = RegistrationCode::orderBy('id', 'desc')->get();
-     $teachers = Teacher::all(['id','firstName','lastName']);
-     $students = Student::all(['id','firstName','lastName']);
-     return View('app.codes', compact('codes', 'teachers', 'students'));
-   }
+  public function showCodes()
+  {
+    return Redirect::to('/users')->with('info', 'Code-based self-registration is disabled. Administrators can sign up teachers and students directly.');
+  }
 
-   public function generateRegistrationCode(request $request)
-   {
-     if (\Auth::user()->group != 'Admin') {
-       return Redirect::to('/');
-     }
-     $role     = Input::get('role');
-     $group_id = (int) Input::get('group_id');
-     if (!in_array($role, ['Teacher', 'Student']) || $group_id <= 0) {
-       return Redirect::to('/users/codes')->with('error', 'Please select a role and a person.');
-     }
+  public function generateRegistrationCode(request $request)
+  {
+    return Redirect::to('/users')->with('info', 'Code-based self-registration is disabled. Administrators can sign up teachers and students directly.');
+  }
 
-     $person = $role == 'Teacher' ? Teacher::find($group_id) : Student::find($group_id);
-     if (!$person) {
-       return Redirect::to('/users/codes')->with('error', 'The selected record no longer exists.');
-     }
-
-     RegistrationCode::where('role', $role)->where('group_id', $group_id)->where('status', 'unused')->delete();
-
-     $block = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-     $code = substr(str_shuffle($block), 0, 4).'-'.substr(str_shuffle($block), 0, 4);
-
-     $rCode = new RegistrationCode;
-     $rCode->code        = $code;
-     $rCode->role        = $role;
-     $rCode->group_id    = $group_id;
-     $rCode->status      = 'unused';
-     $rCode->created_by  = \Auth::id();
-     $rCode->expires_at  = Carbon::now()->addDays(14);
-     $rCode->save();
-
-     $label = $role.' - '.$person->firstName.' '.$person->lastName;
-     return Redirect::to('/users/codes')->with('newCode', 'Registration code for '.$label.': '.$code);
-   }
-
-   public function deleteCode($id)
-   {
-     if (\Auth::user()->group != 'Admin') {
-       return Redirect::to('/');
-     }
-     $code = RegistrationCode::find($id);
-     if ($code) {
-       $code->status = 'cancelled';
-       $code->save();
-     }
-     return Redirect::to('/users/codes')->with('success', 'Registration code cancelled.');
-   }
+  public function deleteCode($id)
+  {
+    return Redirect::to('/users')->with('info', 'Code-based self-registration is disabled.');
+  }
 
 }
