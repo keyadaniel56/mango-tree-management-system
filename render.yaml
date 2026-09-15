@@ -1,0 +1,128 @@
+# ---------------------------------------------------------------------------
+# Render Blueprint for the Mango Tree School Management System.
+# Reference: https://render.com/docs/blueprint-spec
+#
+# One Blueprint deploy creates the whole stack:
+#   * mango-tree-db                - MySQL 5.7 private service
+#   * mango-tree-management-system - this Laravel 5.5 application (PHP 7.2 + Apache)
+#
+# Commands:
+#   render blueprints validate ./render.yaml
+#   render deploys create <srv-xxxxxxxx> --wait
+# or: Render Dashboard -> New -> Blueprint -> select this repository.
+#
+# MySQL is mandatory here: database/migrations contains MySQL-only trigger and
+# `INSERT ... SET` statements (2016_12_25_143536_createTiggersForBookStock.php),
+# which do not run on Render Postgres.
+# ---------------------------------------------------------------------------
+
+services:
+  # -------------------------------------------------------------------------
+  # MySQL 5.7. Render has no managed MySQL, so it runs as a private service
+  # built from the official Docker Hub image. Private services are only
+  # reachable from other services in this workspace (mango-tree-db:3306).
+  #
+  # `plan: starter` (512 MB) is enough for a small school; move to `standard`
+  # for production workloads. The disk keeps the data across deploys.
+  # -------------------------------------------------------------------------
+  - type: pserv
+    name: mango-tree-db
+    runtime: image
+    image:
+      url: docker.io/library/mysql:5.7
+    plan: starter
+    envVars:
+      - key: MYSQL_DATABASE
+        value: schoolapi
+      - key: MYSQL_USER
+        value: school
+      # Generated once and reused by the web service through `fromService`.
+      - key: MYSQL_PASSWORD
+        generateValue: true
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+    disk:
+      name: mango-tree-db-data
+      mountPath: /var/lib/mysql
+      sizeGB: 10
+
+  # -------------------------------------------------------------------------
+  # The application. Render builds ./Dockerfile and starts docker/start.sh,
+  # which makes Apache listen on $PORT (Render injects 10000 by default).
+  #
+  # healthCheckPath points at the database-free /healthz route in
+  # routes/web.php, so deploys are only promoted once Apache answers.
+  # -------------------------------------------------------------------------
+  - type: web
+    name: mango-tree-management-system
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_NAME
+        value: MangoTreeSchool
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_LOG_LEVEL
+        value: error
+      # Render generates a base64 encoded 256-bit value; docker/start.sh adds
+      # the `base64:` prefix that Laravel requires for AES-256-CBC. Prefer
+      # `sync: false` if you would rather paste your own value, e.g. the output
+      # of `php artisan key:generate --show`.
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        fromService:
+          name: mango-tree-management-system
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        fromService:
+          name: mango-tree-db
+          type: pserv
+          property: host
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_DATABASE
+        fromService:
+          name: mango-tree-db
+          type: pserv
+          envVarKey: MYSQL_DATABASE
+      - key: DB_USERNAME
+        fromService:
+          name: mango-tree-db
+          type: pserv
+          envVarKey: MYSQL_USER
+      - key: DB_PASSWORD
+        fromService:
+          name: mango-tree-db
+          type: pserv
+          envVarKey: MYSQL_PASSWORD
+      - key: SESSION_DRIVER
+        value: file
+      - key: CACHE_DRIVER
+        value: file
+      - key: QUEUE_DRIVER
+        value: sync
+      - key: BROADCAST_DRIVER
+        value: log
+      # auto = seed only an empty database (recommended), true = always seed,
+      # false = never seed. Handled by docker/start.sh.
+      - key: SEED_DATABASE
+        value: auto
+      - key: MAX_RECORD_PER_PAGE
+        value: "25"
+    # Uploaded photos, generated marksheets and the Passport OAuth keys live in
+    # storage/, so without a disk they are lost on every deploy. Delete this
+    # block and switch `plan` to `free` for a throwaway demo environment.
+    disk:
+      name: mango-tree-storage
+      mountPath: /var/www/html/storage
+      sizeGB: 5

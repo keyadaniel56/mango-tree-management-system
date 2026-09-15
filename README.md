@@ -1,91 +1,98 @@
 
-School management system feature list
-====================================
+# Mango Tree School Management System
 
-#### Features
--------------
-* __Multi-Branches System__
-* __Accounts Management__
-* __Result & Report Management__
-* __Mobile Based Attendance System__
-* __Exam and Paper Management__
-* __Fee Management__
-* __Class and Section Management__
-* __Student Management and admission__
-* __SMS Notification  System__
-* __Voice Notification System__
+A comprehensive school management system built with Laravel for Mango Tree School.
 
+## Features
 
-#### Student admission system 
------------------------------
-* __Fully functional and automated admission form for student enrolment__
+- **Multi-Branches System**
+- **Accounts Management**
+- **Result & Report Management**
+- **Mobile Based Attendance System**
+- **Exam and Paper Management**
+- **Fee Management**
+- **Class and Section Management**
+- **Student Management and Admission**
+- **SMS Notification System**
+- **Voice Notification System**
 
-* __Enroll students to a specific class and section for a certain session__
+### Student Admission System
+- Fully functional and automated admission form for student enrolment
+- Enroll students to a specific class and section for a certain session
 
-#### Class-wise subject management  
-----------------------------------
-* __Add subjects for each class separately__
+### Class-wise Subject Management
+- Add subjects for each class separately
 
-#### Student promotion 
------------------------
-* __promote a student from one class to another__
+### Student Promotion
+- Promote a student from one class to another
 
-#### Students’ daily attendance  
--------------------------------
-* __Take attendance of students daily__
-* __Keep track if students are absent__
+### Students' Daily Attendance
+- Take attendance of students daily
+- Keep track if students are absent
 
+### Students' Attendance Report
+- Get a well-defined attendance report for all students of a certain class for a certain month
 
-#### Students’ attendance report  
----------------------------------
-* __Get a well-defined attendance report for all students of a certain class for a certain month__
+### Exam Evaluations or Marks Management
+- Evaluate or put exam marks for each student subject wise
+- Compare students' marks
+- Print student mark sheet
 
-#### Exam evaluations or marks management   
-------------------------------------------
-* __Evaluate or put exam marks for each student subject wise__
-* __Compare students’ marks__
-* __Print student mark sheet__
+### Students' Fees Management
+- Create invoice for student fees
+- Automatically send fees notification to specific date set in admin
 
-#### Students’ fees management   
--------------------------------
-* __Create invoice for student fees__
-* __Automatically send fees notification to specific date whose set in amdin__
+### Academic Year or Session Handling
+- Keep school records year-wise
+- Ability to select academic sessions
+- Ability to see previous session data
 
-#### Academic year or session handling    
----------------------------------------
-* __Keep your school records year-wise__
-* __Ability to select academic sessions__
-* __Ability to see previous session data__
+### Management of Teachers
+- Add/edit/delete teachers anytime you need
+- Assign teacher to a specific class or section
+- Assign teacher to specific subject
 
-#### Management of teachers     
-----------------------------
-* __Add/edit/delete teachers anytime you need__
-* __Assign teacher to a specific class or section__
-* __Assign teacher to specific subject__
+### Customization of School Information
+- Change school name and other information from system settings
 
-#### Customization of school information    
------------------------------------------
-* __Change school name and other information from system settings__
+### Teacher Panel
+- Teacher dashboard with attendance and teacher portion
 
-#### Teacher Panel    
--------------------
-* __teacher show dashboard attendance and teachers portion__
+## Installation
 
-## ICTSchool Installation
+### Using Docker (Recommended)
 
+Run the project with a single command:
 
-** First git clone
+```bash
+docker compose up --build
 ```
- https://github.com/ictinnovations/ICTSchool.git
- ```
-#### Create ENV file
-to create env file run, navigate to ICTSchool direcotry and run the following command.
+
+The application will be available at http://localhost:8080. The container listens
+on port `10000` internally (the same contract Render uses) and compose maps it to
+`8080` on your machine.
+
+To build and run the production image exactly the way Render does (MySQL 5.7 + the
+app on `:10000`, waiting for `/healthz`):
+
+```bash
+./docker/render-deploy.sh verify
 ```
+
+### Manual Setup
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd mango-tree-management-system
+```
+
+2. Create the `.env` file:
+```bash
 cp .env.example .env
 ```
-#### Database creds config in ENV
 
-After create env file, enter database creds e.g.
+3. Configure database credentials in `.env`:
 ```
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -95,70 +102,133 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-#### Create Database
-After change configuration according to your need, create same name database which is defined in **env** file.
-
-### Run Composer Command
-After all configuration, we need to run **composer** command to install laravel and other packages. Run the following command
-```
+4. Install dependencies:
+```bash
 composer install
 ```
->After installing Laravel, you may need to configure some permissions. Directories within the storage and the bootstrap/cache directories should be writable by your web server or Laravel will not run.
 
-After run **composer install**  run the following command to genrate **APP_KEY**, It is a private string (encryption_key) in your application that nobody knows about. So, if only your application knows the key, only your application can decrypt data that is encrypted by this key.
-```
+5. Generate application key:
+```bash
 php artisan key:generate
 ```
-### Database Migration
-Migrations are like version control for your database, allowing your team to easily modify and share the application's database schema. Migrations are typically paired with Laravel's schema builder to easily build your application's database schema. If you have ever had to tell a teammate to manually add a column to their local database schema, you've faced the problem that database migrations solve.
-```
-$ php artisan migrate
-```
-```
-$ php artisan db:seed
-```
-```
-$ php artisan passport:install (for restfull Api)
-```
-```
-$ php artisan storage:link
-```
-```
-$ php artisan serve --port 8080
-```
-**  http://localhost:8080 **
-```
-$ php artisan storage:link
 
+6. Run database migrations and seed:
+```bash
+php artisan migrate
+php artisan db:seed
 ```
-## cron job Settings
+
+7. Install passport for RESTful API:
+```bash
+php artisan passport:install
 ```
+
+8. Create storage symlink:
+```bash
+php artisan storage:link
+```
+
+9. Start the development server:
+```bash
+php artisan serve --port 8080
+```
+
+## Deploying to Render
+
+The repository contains everything Render needs:
+
+| File | Purpose |
+| --- | --- |
+| `Dockerfile` | PHP 7.2 + Apache image; Composer dependencies are installed at build time |
+| `docker/start.sh` | Entrypoint: listens on `$PORT`, waits for MySQL, migrates, seeds once, fixes permissions |
+| `render.yaml` | Blueprint: MySQL 5.7 private service + the Docker web service, wired together |
+| `.dockerignore` | Keeps `.env` secrets and `vendor/` out of the build context |
+| `render.env.example` | Environment variables for a manually created web service |
+| `docker/render-deploy.sh` | Helper: `build`, `verify`, `push`, `deploy`, `blueprint` |
+
+### 1. Commit the deployment files
+
+`composer.lock` is no longer git-ignored: the Render build runs `composer install`
+and needs the lock file for a reproducible install.
+
+```bash
+git add composer.lock Dockerfile docker/ render.yaml render.env.example .dockerignore
+git commit -m "Add Render deployment"
+git push origin main
+```
+
+### 2. Deploy the Blueprint
+
+Render Dashboard → **New → Blueprint** → select this repository → **Apply**, or from
+the Render CLI:
+
+```bash
+render blueprints validate ./render.yaml
+render deploys create <srv-xxxxxxxx> --wait
+```
+
+`render.yaml` creates two services:
+
+- `mango-tree-db` – MySQL 5.7 private service with a 10 GB disk. MySQL is mandatory:
+  `database/migrations/2016_12_25_143536_createTiggersForBookStock.php` uses
+  MySQL-only trigger syntax and `INSERT ... SET` statements that Render Postgres
+  cannot run.
+- `mango-tree-management-system` – Docker web service built from `./Dockerfile`,
+  listening on `$PORT`, health check `/healthz`, 5 GB disk at
+  `/var/www/html/storage` for uploads and Passport keys.
+
+The database credentials are generated by Render and injected into the app with
+`fromService`, so no secrets are stored in the repository.
+
+### 3. Verify the container locally (optional)
+
+```bash
+./docker/render-deploy.sh verify
+```
+
+This builds the image, starts MySQL 5.7 and the application on port `10000` with the
+same environment Render uses, then polls `http://127.0.0.1:10000/healthz`.
+
+### 4. Deploy a prebuilt image instead (optional)
+
+```bash
+./docker/render-deploy.sh push docker.io/<user>/mango-tree:latest
+render deploys create <srv-xxxxxxxx> --image docker.io/<user>/mango-tree:latest --wait
+```
+
+Or in the Dashboard: service → **Settings → Deploy an existing image**.
+
+### Render notes
+
+- **Port** – Render injects `PORT` (default `10000`). `docker/start.sh` rewrites
+  Apache's `Listen` and `VirtualHost` directives to that port, never hardcode `80`.
+- **Health check** – `/healthz` (`routes/web.php`) does not touch the database, so the
+  new instance is promoted even while MySQL is still booting.
+- **Seeding** – `SEED_DATABASE=auto` (default) seeds only when the `users` table is
+  empty, so restarts never duplicate demo data. Use `true` to force or `false` to skip.
+- **APP_KEY** – Render's `generateValue: true` produces a raw base64 value and
+  `docker/start.sh` adds the `base64:` prefix Laravel needs for AES-256-CBC. To use
+  your own key, run `php artisan key:generate --show` and set `APP_KEY` with
+  `sync: false` in `render.yaml`.
+- **TLS** – Render terminates TLS at its edge, so `app/Http/Middleware/TrustProxies.php`
+  trusts all proxies to keep generated URLs and cookies on `https://`.
+- **Free tier** – the Blueprint uses `plan: starter` because persistent disks require a
+  paid instance type. For a throwaway demo, delete both `disk:` blocks and set
+  `plan: free` on the web service (all data resets on every deploy).
+- **Scheduled notifications** – Render has no crontab. Add a Render Cron Job service
+  running `php artisan schedule:run` every minute to keep the fee/attendance
+  notification commands in `app/Console/Kernel.php` working.
+
+## Cron Job Settings
+
+```bash
 crontab -e
 
-* * * * * /usr/bin/php7.1 /path/artisan schedule:run 1>> /dev/null 2>&1
-
+* * * * * /usr/bin/php /path/to/artisan schedule:run 1>> /dev/null 2>&1
 ```
-# Screenshot
-============
 
-<img src="screenshoot/Screenshot(21).png" >
-<img src="screenshoot/Screenshot(22).png" >
-<img src="screenshoot/Screenshot(23).png" >
-<img src="screenshoot/Screenshot(24).png" >
-<img src="screenshoot/Screenshot(25).png" >
-<img src="screenshoot/Screenshot(26).png" >
-<img src="screenshoot/Screenshot(27).png" >
-<img src="screenshoot/Screenshot(28).png" >
-<img src="screenshoot/Screenshot(29).png" >
-<img src="screenshoot/Screenshot(30).png" >
-<img src="screenshoot/Screenshot(31).png" >
-<img src="screenshoot/Screenshot(32).png" >
-<img src="screenshoot/Screenshot(34).png" >
-<img src="screenshoot/Screenshot(35).png" >
-<img src="screenshoot/Screenshot(33).png" >
+## System Dependencies
 
-System Dependencies
-===================
 - PHP version 7.2.33
 - Composer version 1.10.1
 - OpenSSL PHP Extension
@@ -166,5 +236,3 @@ System Dependencies
 - Mbstring PHP Extension
 - Tokenizer PHP Extension
 - XML PHP Extension
-website: https://www.ictschool.net
-developed by ICT Innovations https://www.ictinnovations.com

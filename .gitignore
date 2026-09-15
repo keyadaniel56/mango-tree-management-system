@@ -1,6 +1,7 @@
 .env
-composer.lock
 /.env
+# composer.lock is intentionally committed: the Render Docker build runs
+# `composer install`, which needs the lock file for reproducible installs.
 storage/*.key
 /storage/logs/*
 img/*

@@ -27,8 +27,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      # Same contract as Render: the container listens on $PORT (see docker/start.sh).
+      PORT: 10000
+      # auto = seed only an empty database, true = always, false = never.
+      SEED_DATABASE: auto
     ports:
-      - "8080:80"
+      - "8080:10000"
     volumes:
       - .:/var/www/html
       - ./docker/php.ini:/usr/local/etc/php/conf.d/zz-app.ini:ro

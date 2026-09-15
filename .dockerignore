@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------
+# Build context for the Render / docker compose image.
+# Keep this file small: Render uploads the filtered context on every deploy.
+# ---------------------------------------------------------------------------
+
+# Version control and tooling
+.git
+.gitattributes
+.gitignore
+.github
+.idea
+.vscode
+
+# Local, never bake secrets or machine specific config into an image
+.env
+.env.*
+!.env.example
+Homestead.json
+Homestead.yaml
+
+# Dependencies: composer install runs inside the image (Dockerfile step 4)
+vendor
+node_modules
+
+# NOTE: the root level asset directories (assets/, css/, js/, fonts/,
+# font-awesome/, bower_components/, markssheetcontent/) must stay in the build
+# context: public/* are git symlinks pointing at them, e.g.
+#   public/bower_components -> ../bower_components
+# Excluding them makes Apache answer 403 for those URLs.
+
+# Documentation and screenshots that are not part of the runtime
+docs
+screenshoot
+oldfolder
+docss.zip
+*.md
+
+# Volume mounts from docker-compose make these empty anyway
+storage/app/.setup-done
+storage/framework/cache/data
+storage/framework/sessions
+storage/framework/views
+storage/logs
+bootstrap/cache/*.php
+
+# Build / editor noise
+npm-debug.log
+yarn-error.log
+*.log

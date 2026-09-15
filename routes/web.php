@@ -1,5 +1,19 @@
 <?php
 use Illuminate\Support\Facades\Input;
+
+/*
+|--------------------------------------------------------------------------
+| Health check
+|--------------------------------------------------------------------------
+|
+| Used by the Docker HEALTHCHECK and by Render's healthCheckPath (render.yaml).
+| It must stay database independent so it also answers while MySQL is booting.
+|
+*/
+Route::get('healthz', function () {
+    return response('ok', 200)->header('Content-Type', 'text/plain');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
