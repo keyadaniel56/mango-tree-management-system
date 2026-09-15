@@ -19,12 +19,21 @@ if ($host === false || $host === '') {
     exit(1);
 }
 
+$options = [PDO::ATTR_TIMEOUT => 3, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
+
+if ($ca = getenv('MYSQL_ATTR_SSL_CA')) {
+    $options[PDO::MYSQL_ATTR_SSL_CA] = $ca;
+    if (getenv('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT') === 'true') {
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
+}
+
 try {
     new PDO(
         "mysql:host={$host};port={$port};dbname={$name}",
         $user,
         $pass,
-        [PDO::ATTR_TIMEOUT => 3, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        $options
     );
 
     echo "database is up\n";

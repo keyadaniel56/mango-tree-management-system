@@ -2,63 +2,35 @@
 # Render Blueprint for the Mango Tree School Management System.
 # Reference: https://render.com/docs/blueprint-spec
 #
-# One Blueprint deploy creates the whole stack:
-#   * mango-tree-db                - MySQL 5.7 private service
-#   * mango-tree-management-system - this Laravel 5.5 application (PHP 7.2 + Apache)
+# FREE tier deployment: Render's free plan does NOT support private services
+# (no managed MySQL) or persistent disks, so:
+#   * the single web service runs on `plan: free`
+#   * MySQL lives on an external free provider - Aiven for MySQL 8
+#     (aiven.io/free-mysql-database), which enforces TLS (--ssl-mode=REQUIRED).
+#
+# Before applying this Blueprint, create the Aiven MySQL service and the
+# `schoolapi` database/user, then fill the sync:false variables in the Render
+# dashboard (host, port, credentials and the base64 TLS CA bundle).
 #
 # Commands:
 #   render blueprints validate ./render.yaml
-#   render deploys create <srv-xxxxxxxx> --wait
-# or: Render Dashboard -> New -> Blueprint -> select this repository.
+# or: Render Dashboard -> New -> Blueprint -> select this repository, then
+#     fill the missing env vars on the service -> Deploy.
 #
-# MySQL is mandatory here: database/migrations contains MySQL-only trigger and
-# `INSERT ... SET` statements (2016_12_25_143536_createTiggersForBookStock.php),
-# which do not run on Render Postgres.
+# Trade-offs of the free plan:
+#   * the service sleeps after ~15 min idle and takes ~1 min to wake
+#   * 750 free instance hours per workspace per month
+#   * no persistent disk: uploads / generated marksheets are lost on redeploy
+#     (oauth_passport keys are regenerated automatically by docker/start.sh)
 # ---------------------------------------------------------------------------
 
 services:
-  # -------------------------------------------------------------------------
-  # MySQL 5.7. Render has no managed MySQL, so it runs as a private service
-  # built from the official Docker Hub image. Private services are only
-  # reachable from other services in this workspace (mango-tree-db:3306).
-  #
-  # `plan: starter` (512 MB) is enough for a small school; move to `standard`
-  # for production workloads. The disk keeps the data across deploys.
-  # -------------------------------------------------------------------------
-  - type: pserv
-    name: mango-tree-db
-    runtime: image
-    image:
-      url: docker.io/library/mysql:5.7
-    plan: starter
-    envVars:
-      - key: MYSQL_DATABASE
-        value: schoolapi
-      - key: MYSQL_USER
-        value: school
-      # Generated once and reused by the web service through `fromService`.
-      - key: MYSQL_PASSWORD
-        generateValue: true
-      - key: MYSQL_ROOT_PASSWORD
-        generateValue: true
-    disk:
-      name: mango-tree-db-data
-      mountPath: /var/lib/mysql
-      sizeGB: 10
-
-  # -------------------------------------------------------------------------
-  # The application. Render builds ./Dockerfile and starts docker/start.sh,
-  # which makes Apache listen on $PORT (Render injects 10000 by default).
-  #
-  # healthCheckPath points at the database-free /healthz route in
-  # routes/web.php, so deploys are only promoted once Apache answers.
-  # -------------------------------------------------------------------------
   - type: web
     name: mango-tree-management-system
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: starter
+    plan: free
     healthCheckPath: /healthz
     autoDeployTrigger: commit
     envVars:
@@ -71,9 +43,7 @@ services:
       - key: APP_LOG_LEVEL
         value: error
       # Render generates a base64 encoded 256-bit value; docker/start.sh adds
-      # the `base64:` prefix that Laravel requires for AES-256-CBC. Prefer
-      # `sync: false` if you would rather paste your own value, e.g. the output
-      # of `php artisan key:generate --show`.
+      # the `base64:` prefix that Laravel requires for AES-256-CBC.
       - key: APP_KEY
         generateValue: true
       - key: APP_URL
@@ -83,28 +53,23 @@ services:
           envVarKey: RENDER_EXTERNAL_URL
       - key: DB_CONNECTION
         value: mysql
+      # -- Aiven for MySQL (create the service in the Aiven console first) --
+      # Hostname like mysql-<project>-<service>.aivencloud.com, port like 23935
       - key: DB_HOST
-        fromService:
-          name: mango-tree-db
-          type: pserv
-          property: host
+        sync: false
       - key: DB_PORT
-        value: "3306"
+        sync: false
       - key: DB_DATABASE
-        fromService:
-          name: mango-tree-db
-          type: pserv
-          envVarKey: MYSQL_DATABASE
+        sync: false
       - key: DB_USERNAME
-        fromService:
-          name: mango-tree-db
-          type: pserv
-          envVarKey: MYSQL_USER
+        sync: false
       - key: DB_PASSWORD
-        fromService:
-          name: mango-tree-db
-          type: pserv
-          envVarKey: MYSQL_PASSWORD
+        sync: false
+      # base64 (single line, `base64 -w0 ca.pem`) of the CA bundle Aiven
+      # provides on the service Overview page -> CA Certificate -> Download.
+      # docker/start.sh decodes it and enables TLS with certificate checks.
+      - key: MYSQL_SSL_CA_B64
+        sync: false
       - key: SESSION_DRIVER
         value: file
       - key: CACHE_DRIVER
@@ -119,10 +84,3 @@ services:
         value: auto
       - key: MAX_RECORD_PER_PAGE
         value: "25"
-    # Uploaded photos, generated marksheets and the Passport OAuth keys live in
-    # storage/, so without a disk they are lost on every deploy. Delete this
-    # block and switch `plan` to `free` for a throwaway demo environment.
-    disk:
-      name: mango-tree-storage
-      mountPath: /var/www/html/storage
-      sizeGB: 5

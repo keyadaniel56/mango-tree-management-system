@@ -55,7 +55,23 @@ elif [ "${APP_KEY#base64:}" = "${APP_KEY}" ] && [ "${#APP_KEY}" -eq 44 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Composer dependencies. The image installs them at build time; this is a
+# 3. MySQL TLS (Aiven and other managed providers enforce encryption). The CA
+#    bundle comes in as MYSQL_SSL_CA_B64 (base64 of the PEM file from the
+#    provider console) and is decoded once to /usr/local/etc/ssl. Both options
+#    are picked up by config/database.php. Nothing happens when the variable
+#    is unset (local docker compose).
+# ---------------------------------------------------------------------------
+if [ -n "${MYSQL_SSL_CA_B64:-}" ]; then
+    log "Decoding MYSQL_SSL_CA_B64 into /usr/local/etc/ssl/aiven-ca.pem"
+    mkdir -p /usr/local/etc/ssl
+    printf '%s' "$MYSQL_SSL_CA_B64" | base64 -d > /usr/local/etc/ssl/aiven-ca.pem
+    chmod 600 /usr/local/etc/ssl/aiven-ca.pem
+    export MYSQL_ATTR_SSL_CA=/usr/local/etc/ssl/aiven-ca.pem
+    export MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=true
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Composer dependencies. The image installs them at build time; this is a
 #    safety net for the case where an empty vendor/ volume covers the image.
 # ---------------------------------------------------------------------------
 if [ ! -f vendor/autoload.php ]; then
@@ -67,7 +83,7 @@ fi
 php /usr/local/bin/patch-package-manifest.php "$APP_ROOT"
 
 # ---------------------------------------------------------------------------
-# 4. Render starts all services of a Blueprint in parallel, so MySQL may still
+# 5. Render starts all services of a Blueprint in parallel, so MySQL may still
 #    be booting when this container starts.
 # ---------------------------------------------------------------------------
 if [ -n "${DB_HOST:-}" ]; then
@@ -85,7 +101,7 @@ if [ -n "${DB_HOST:-}" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Runtime directories. A Render disk can be mounted over storage/, which
+# 6. Runtime directories. A Render disk can be mounted over storage/, which
 #    hides the directories created at build time.
 # ---------------------------------------------------------------------------
 mkdir -p storage/app/public storage/framework/cache storage/framework/sessions \
@@ -98,13 +114,13 @@ fi
 chown -R www-data:www-data storage bootstrap/cache
 
 # ---------------------------------------------------------------------------
-# 6. Migrations are idempotent, so they run on every boot.
+# 7. Migrations are idempotent, so they run on every boot.
 # ---------------------------------------------------------------------------
 log "Running database migrations"
 php artisan migrate --force
 
 # ---------------------------------------------------------------------------
-# 7. Seeding happens exactly once. The `users` table is the marker:
+# 8. Seeding happens exactly once. The `users` table is the marker:
 #    SEED_DATABASE=auto (default) seeds only an empty database,
 #    SEED_DATABASE=true seeds on every boot, SEED_DATABASE=false never seeds.
 # ---------------------------------------------------------------------------
@@ -120,7 +136,7 @@ if [ "$SEED_DATABASE" != "false" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 8. Passport OAuth keys and clients. Keys live in storage/, so they have to be
+# 9. Passport OAuth keys and clients. Keys live in storage/, so they have to be
 #    regenerated whenever the filesystem is recreated. Client rows are kept.
 # ---------------------------------------------------------------------------
 if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
@@ -135,7 +151,7 @@ if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 9. Refresh Composer's cached package manifest, then hand over to Apache.
+# 10. Refresh Composer's cached package manifest, then hand over to Apache.
 #
 # `config:cache`/`route:cache` are deliberately not used: the application calls
 # env() outside config/ (e.g. app/Http/Controllers/SiteController.php uses
