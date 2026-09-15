@@ -893,6 +893,26 @@ public function view($id)
 	return View("app.studentView",compact('student','attendances','year','month','fee_name'));
 }
 /**
+* Student dashboard (role home).
+*
+* @return Response
+*/
+public function dashboard()
+{
+	$student = Student::find(\Auth::user()->group_id);
+	if(!$student){
+		return Redirect::to('/dashboard');
+	}
+
+	$section = DB::table('section')->where('id',$student->section)->first();
+	$class   = DB::table('Class')->where('code',$student->class)->first();
+
+	$term1 = DB::table('timetable')->where('section_id',$student->section)->where('term','1')->count();
+	$term2 = DB::table('timetable')->where('section_id',$student->section)->where('term','2')->count();
+
+	return View('app.studentDashboard',compact('student','section','class','term1','term2'));
+}
+/**
 * Show the form for editing the specified resource.
 *
 * @param  int  $id

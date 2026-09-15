@@ -1,0 +1,40 @@
+services:
+  db:
+    image: mysql:5.7
+    container_name: ictschool-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: schoolapi
+      MYSQL_USER: school
+      MYSQL_PASSWORD: school
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      network: host
+    container_name: ictschool-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/zz-app.ini:ro
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+volumes:
+  dbdata:

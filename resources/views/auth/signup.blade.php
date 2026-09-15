@@ -1,22 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!--
-        ===
-        This comment should NOT be removed.
-
-        Charisma v2.0.0
-
-        Copyright 2012-2014 Muhammad Usman
-        Licensed under the Apache License v2.0
-        http://www.apache.org/licenses/LICENSE-2.0
-
-        http://usman.it
-        http://twitter.com/halalit_usman
-        ===
-    -->
     <meta charset="utf-8">
-    <title>School Manage</title>
+    <title>{{$institute->name}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
@@ -57,17 +43,30 @@
                     <div class="alert alert-success text-center">
                         <button data-dismiss="alert" class="close" type="button">×</button>
                         <strong> {{ Session::get('message')}} </strong>
-
                     </div>
                 @endif
                 <img src="img/logo.png" style="height:120px;">
+                <h4 class="text-center">Create your account</h4>
+                <p class="text-center"><small>Teacher and Student signup requires the unique secret code issued by the school. Unregistered outsiders cannot create accounts.</small></p>
 
-                <form class="form-horizontal" action="users/login" method="post">
+                <form class="form-horizontal" action="signup" method="post">
                     <input type="hidden" name="_token" value="{{ csrf_token() }}">
                     <fieldset>
                         <div class="input-group input-group-lg">
+                            <span class="input-group-addon"><i class="glyphicon glyphicon-qrcode red"></i></span>
+                            <input type="text" class="form-control" name="code" placeholder="Secret Registration Code" value="{{ old('code') }}">
+                        </div>
+                        <div class="clearfix"></div><br>
+
+                        <div class="input-group input-group-lg">
                             <span class="input-group-addon"><i class="glyphicon glyphicon-user red"></i></span>
-                            <input type="text" class="form-control" name="login" placeholder="Username">
+                            <input type="text" class="form-control" name="login" placeholder="Choose a Username" value="{{ old('login') }}">
+                        </div>
+                        <div class="clearfix"></div><br>
+
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-addon"><i class="glyphicon glyphicon-envelope red"></i></span>
+                            <input type="text" class="form-control" name="email" placeholder="Email (optional)" value="{{ old('email') }}">
                         </div>
                         <div class="clearfix"></div><br>
 
@@ -75,29 +74,34 @@
                             <span class="input-group-addon"><i class="glyphicon glyphicon-lock red"></i></span>
                             <input type="password" class="form-control" name="password" placeholder="Password">
                         </div>
+                        <div class="clearfix"></div><br>
+
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-addon"><i class="glyphicon glyphicon-lock red"></i></span>
+                            <input type="password" class="form-control" name="confirm" placeholder="Confirm Password">
+                        </div>
                         <div class="clearfix"></div>
 
-                    
-                        <div class="clearfix"></div>
-                        @if (isset($error))
+                        @if (count($errors) > 0)
+                            @foreach ($errors->all() as $err)
+                                <div class="alert alert-danger"><button data-dismiss="alert" class="close" type="button">×</button><strong>{{ $err }}.</strong></div>
+                            @endforeach
+                        @endif
+                        @if (Session::get('error'))
                                 <div class="alert alert-danger">
                                 <button data-dismiss="alert" class="close" type="button">×</button>
-                                <strong>{{ $error }}.</strong>
+                                <strong>{{ Session::get('error') }}.</strong>
                             </div>
                         @endif
 
-
                         <p class="center col-md-5">
-                            <button type="submit" class="btn btn-primary">Login</button>
+                            <button type="submit" class="btn btn-primary">Register</button>
+                        </p>
+                        <p class="center col-md-7">
+                            <a href="/">Already have an account? Login</a>
                         </p>
                     </fieldset>
                 </form>
-                <div class="clearfix"></div>
-                <hr>
-                <p class="text-center"><a href="signup">Teacher / Student? Register with your secret code</a></p>
-                @if (isset($hasAdmin) && !$hasAdmin)
-                    <p class="text-center"><a href="setup">No admin yet? Create the first administrator account</a></p>
-                @endif
             </div>
             <!--/span-->
         </div><!--/row-->

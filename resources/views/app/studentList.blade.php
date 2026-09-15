@@ -149,9 +149,11 @@
                                                        <td>
                                                   <a title='View' class='btn btn-success' href='{{url("/student/view")}}/{{$student->id}}'> <i class="glyphicon glyphicon-zoom-in icon-white"></i></a>&nbsp&nbsp<a title='Edit' class='btn btn-info' href='{{url("/student/edit")}}/{{$student->id}}'> <i class="glyphicon glyphicon-edit icon-white"></i></a>
                                                     &nbsp&nbsp<a title='Delete' class='btn btn-danger' href='#' onclick="confirmed('{{$student->id}}')"> <i class="glyphicon glyphicon-trash icon-white"></i></a>
-                                                    &nbsp&nbsp <a title='View' class='btn btn-success' href='{{url("/student/access")}}/{{$student->id}}'> <i class="glyphicon glyphicon-phone"></i></a>
-                                                    <?php /*&nbsp&nbsp <a title='View' class='btn btn-success' href='{{url("/fee/collections?class_id=$student->class_code&section=$student->section_id&session=$student->session&type=Monthly&month=$month&fee_name=$fee_name")}}'> <i class="glyphicon glyphicon-phone"></i></a>
-                                                               */ ?>
+&nbsp&nbsp <a title='View' class='btn btn-success' href='{{url("/student/access")}}/{{$student->id}}'> <i class="glyphicon glyphicon-phone"></i></a>
+                                                     &nbsp&nbsp <a title='Portal Code' class='btn btn-warning' onclick="event.preventDefault(); document.getElementById('codeform-{{$student->id}}').submit();" href='#'> <i class="glyphicon glyphicon-qrcode"></i></a>
+                                                     <form id="codeform-{{$student->id}}" method="post" action="{{ url('/users/codes/generate') }}" style="display:none;">{{ csrf_field() }}<input type="hidden" name="role" value="Student"><input type="hidden" name="group_id" value="{{ $student->id }}"></form>
+                                                     <?php /*&nbsp&nbsp <a title='View' class='btn btn-success' href='{{url("/fee/collections?class_id=$student->class_code&section=$student->section_id&session=$student->session&type=Monthly&month=$month&fee_name=$fee_name")}}'> <i class="glyphicon glyphicon-phone"></i></a>
+                                                                */ ?>
                                                                </td>
                                                            @endforeach
                                                            </tbody>

@@ -61,6 +61,13 @@ Route::post('/usercreate','UsersController@create');
 Route::get('/useredit/{id}','UsersController@edit');
 Route::post('/userupdate','UsersController@update');
 Route::get('/userdelete/{id}','UsersController@delete');
+Route::get('/signup','UsersController@showSignup');
+Route::post('/signup','UsersController@processSignup');
+Route::get('/setup','UsersController@showSetup');
+Route::post('/setup','UsersController@processSetup');
+Route::get('/users/codes','UsersController@showCodes');
+Route::post('/users/codes/generate','UsersController@generateRegistrationCode');
+Route::get('/users/codes/delete/{id}','UsersController@deleteCode');
 });
 //Route::get('/users/regi','UsersController@postRegi');
 
@@ -218,6 +225,7 @@ Route::get('/teacher/access/{id}','teacherController@access')->middleware('check
 
 Route::get('/teacher/create-timetable','teacherController@index_timetable')->middleware('checkPermission:teacher_timetable_add');
 Route::post('/teacher/create_timetable','teacherController@create_timetable')->middleware('checkPermission:teacher_timetable_add');
+Route::get('/timetable/list','teacherController@manage_timetable')->middleware('checkPermission:teacher_timetable_view');
 Route::get('/timetable/edit/{timetable_id}','teacherController@edit_timetable');
 Route::post('/timetable/update','teacherController@update_timetable');
 Route::get('/timetable/delete/{timetable_id}','teacherController@delete_timetable');
@@ -234,6 +242,9 @@ Route::get('/diary/delete/{diary_id}','teacherController@delete_diary');
 });
 Route::group(['middleware' => ['web','activity']], function(){ 
 
+Route::get('/teacher/dashboard','teacherController@dashboard');
+Route::get('/student/dashboard','studentController@dashboard');
+Route::get('/accountant/dashboard','accountingController@dashboard');
 Route::get('/teacher/view-timetable/{id}','teacherController@view_timetable');
 Route::get('/section/getList/{class}/{session}','sectionController@getsections');
 Route::get('/section/getList/{class}','sectionController@getsectionsc');

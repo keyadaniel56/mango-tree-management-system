@@ -30,10 +30,11 @@ class HomeController extends BaseController {
 		if(!$institute)
 		{
 			$institute=new Institute;
-			$institute->name="ictvission";
+			$institute->name="The Mango Tree Girls School";
 		}
+		$hasAdmin = \App\User::where('group', 'Admin')->count() > 0;
 		//return View::make('login',compact('error','institute'));
-		 return view('login',compact('error','institute'));
+		 return view('login',compact('error','institute','hasAdmin'));
 
 		//echo "hello";
 

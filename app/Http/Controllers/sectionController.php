@@ -252,6 +252,7 @@ class sectionController extends BaseController {
 
 	public function view_timetable($id)
 	{
+		$term = Input::get('term', '1');
 		$teacher_name =  array();
 		$timetables = DB::table('timetable')
 		->join('teacher', 'timetable.teacher_id', '=', 'teacher.id')
@@ -260,13 +261,14 @@ class sectionController extends BaseController {
 		->join('section', 'section.id', '=', 'timetable.section_id')
 		->select('teacher.*','timetable.stattime','timetable.endtime','timetable.day','timetable.id as timetable_id','Subject.name AS subname' , 'section.name as section_id', 'section.class_code as classname')
 		->where('timetable.section_id',$id)
+		->where('timetable.term',$term)
 		/*	->where('section',Input::get('section'))
 		->where('shift',Input::get('shift'))
 		->where('session',trim(Input::get('session')))*/
 		->get();
 		// $timetables = DB::table('timetable')->where('timetable.teacher_id',$id)->get();
 		//echo "<pre>";print_r($timetables); exit;
-		return View("app.teacherViewtimetable",compact('timetables','teacher_name'));
+		return View("app.teacherViewtimetable",compact('timetables','teacher_name','term'));
 	}
 
 }

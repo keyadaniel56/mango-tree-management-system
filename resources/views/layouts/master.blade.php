@@ -32,7 +32,7 @@ $permision[] = $permission->permission_name;
         ===
     -->
     <meta charset="utf-8">
-    <title>@if(Session::get('inName')=='') Ict Innovations School @else {{Session::get('inName')}} @endif</title>
+    <title>@if(Session::get('inName')=='') The Mango Tree Girls School @else {{Session::get('inName')}} @endif</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}" />
 
@@ -72,6 +72,73 @@ window.addEventListener('keydown',function(e){if(e.keyIdentifier=='U+000A'||e.ke
     <!-- Main CSS-->
     <link href="{{ URL::asset('/assets/css/theme.css')}}" rel="stylesheet" media="all">
 
+    <style>
+        .menu-sidebar2 .logo {
+            height: 75px;
+            padding: 6px 20px;
+            -webkit-box-orient: vertical;
+            -webkit-box-direction: normal;
+            -webkit-flex-direction: column;
+            -moz-box-orient: vertical;
+            -moz-box-direction: normal;
+            -ms-flex-direction: column;
+            flex-direction: column;
+            -webkit-box-pack: center;
+            -webkit-justify-content: center;
+            -moz-box-pack: center;
+            -ms-flex-pack: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .menu-sidebar2 .logo img {
+            width: 44px;
+            height: 44px;
+            margin-bottom: 4px;
+        }
+        .menu-sidebar2 .logo h2 {
+            font-size: 13px;
+            line-height: 1.2;
+            margin: 0;
+            max-width: 100%;
+            overflow: hidden;
+            color: #fff;
+            text-transform: none;
+            letter-spacing: 0;
+            white-space: normal;
+        }
+        .header-desktop2 .logo {
+            padding: 0 15px;
+        }
+        .header-desktop2 .logo a {
+            display: -webkit-box;
+            display: -webkit-flex;
+            display: -moz-box;
+            display: -ms-flexbox;
+            display: flex;
+            -webkit-box-align: center;
+            -webkit-align-items: center;
+            -moz-box-align: center;
+            -ms-flex-align: center;
+            align-items: center;
+        }
+        .header-desktop2 .logo img {
+            width: 54px;
+            height: 54px;
+        }
+        .header-desktop2 .logo h2 {
+            display: inline-block;
+            font-size: 14px;
+            line-height: 1.2;
+            margin: 0 0 0 10px;
+            max-width: 300px;
+            overflow: hidden;
+            color: #fff;
+            text-transform: none;
+            letter-spacing: 0;
+            white-space: normal;
+        }
+    </style>
+
     <link href='{{ URL::asset('/bower_components/fullcalendar/dist/fullcalendar.css') }}' rel='stylesheet'>
     <link href='{{ URL::asset('/bower_components/fullcalendar/dist/fullcalendar.print.css') }}' rel='stylesheet' media='print'>
     <link href='{{ URL::asset('/bower_components/chosen/chosen.min.css') }}' rel='stylesheet'>
@@ -81,7 +148,7 @@ window.addEventListener('keydown',function(e){if(e.keyIdentifier=='U+000A'||e.ke
     
 
 
-    <link rel="shortcut icon" href="{{ URL::asset('img/favicon.ico')}}">
+    <link rel="icon" type="image/png" href="{{ URL::asset('img/favicon.png')}}">
     {{--<link href='//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.4/css/bootstrap-select.min.css' rel='stylesheet'>--}}
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.min.css">
 
@@ -338,7 +405,7 @@ table i {
     <![endif]-->
 
     <!-- The fav icon -->
-    <link rel="shortcut icon" href="{{ URL::asset('img/favicon.ico')}}">
+    <link rel="icon" type="image/png" href="{{ URL::asset('img/favicon.png')}}">
     <link href="https://cdn.datatables.net/buttons/1.5.2/css/buttons.dataTables.min.css" rel="stylesheet">
 }
 </head>
@@ -368,11 +435,8 @@ table i {
                             <div class="logo d-block d-lg-none">
 
                                 <a class="js-arrow" href="#">
-                                    @if(Session::get('inName')=='')
-                                    <img src="images/icon/logo-white.png" alt="CoolAdmin" />
-                                    @else
-                                      <h2>{{Session::get('inName')}}</h2>
-                                    @endif
+                                    <img src="images/icon/logo-white.png" alt="The Mango Tree Girls School" />
+                                    <h2>@if(Session::get('inName')=='') The Mango Tree Girls School @else {{Session::get('inName')}} @endif</h2>
                                 </a>
                             </div>
                             <div class="header-button-item js-item-menu">
@@ -785,7 +849,7 @@ table i {
                                 <div class="copyright">
                                    <p class="col-md-9 col-sm-9 col-xs-12 copyright"> <a href="#" target="_blank">{{Session::get('inName')}}</a> &copy;<?php echo date("Y");?></p>
                                     <p class="col-md-3 col-sm-3 col-xs-12 powered-by">Developed by:
-                                    <a href="http://ictvision.net/">IctVision</a></p>
+                                    <a href="#">The Mango Tree Girls School</a></p>
                                 </div>
                             </div>
                         </div>

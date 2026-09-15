@@ -866,7 +866,7 @@ user-select: none !important;
         <p class="col-md-9 col-sm-9 col-xs-12 copyright"> <a href="#" target="_blank">{{Session::get('inName')}}</a> &copy;<?php echo date("Y");?></p>
 
         <p class="col-md-3 col-sm-3 col-xs-12 powered-by">Developed by:
-        <a href="http://ictvision.net/">IctVision</a></p>
+        <a href="#">The Mango Tree Girls School</a></p>
     </footer>
 </div><!--/.fluid-container-->
 

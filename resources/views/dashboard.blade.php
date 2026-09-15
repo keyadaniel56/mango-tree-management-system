@@ -161,7 +161,7 @@ $get_data = branchesapi($branch->username,$branch->password,$branch->branch_url,
                 <!-- Begin MailChimp Signup Form -->
                 <div class="col-md-12 col-sm-12 col-xs-12">
                   
-                  <h1>Some thing Wrong please contact ictvision</h1>
+                  <h1>Some thing Wrong please contact the administrator</h1>
                   </div>
                   </div>
             </div>

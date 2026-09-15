@@ -439,3 +439,16 @@ if (! function_exists('getinstitueinfo')) {
 	}
 }
 
+if (! function_exists('getterms')) {
+	function getterms(){
+		return ['1' => 'First Term', '2' => 'Second Term'];
+	}
+}
+
+if (! function_exists('termname')) {
+	function termname($term){
+		$terms = getterms();
+		return isset($terms[$term]) ? $terms[$term] : $term;
+	}
+}
+

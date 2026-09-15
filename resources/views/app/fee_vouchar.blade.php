@@ -306,7 +306,7 @@ input[type="text"]{font: 15px/24px "Lato", Arial, sans-serif; color: #333; width
   <div class="col-sm-4 col-sm-offset-4 col-md-4 col-md-offset-0 border-left">uyuyu</div>
 </div>
 <p style="color:red;text-align:center">Admission test will be held on xxth XXXX at Campus 1.</p>
-<p style="text-align:right;margin-right:10px;">Software develop by-<strong>Ict Vision<strong></p>
+<p style="text-align:right;margin-right:10px;">The Mango Tree Girls School</p>
 </div>
 </body>
 </html>

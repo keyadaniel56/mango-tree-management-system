@@ -43,6 +43,14 @@ class accountingController extends BaseController {
 		return View('app.accounting',compact('accounting'));
 	}
 
+	public function dashboard()
+	{
+		$income  = DB::table('accounting')->where('type','Income')->sum('amount');
+		$expence = DB::table('accounting')->where('type','Expence')->sum('amount');
+		$sectors = DB::table('accounting_sector')->count();
+		return View('app.accountingDashboard',compact('income','expence','sectors'));
+	}
+
 	public function store()
 	{
 		$rules=[

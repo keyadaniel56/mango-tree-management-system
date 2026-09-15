@@ -29,6 +29,10 @@ class DashboardController extends BaseController {
 	*/
 	public function index()
 	{
+		$role = strtolower(Auth::user()->group);
+		if ($role == 'teacher' || $role == 'student' || $role == 'accountant') {
+			return \Redirect::to('/'.$role.'/dashboard');
+		}
 
 		/*activity()
 		   //->performedOn($anEloquentModel)

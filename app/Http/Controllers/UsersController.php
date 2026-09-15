@@ -10,6 +10,10 @@ use App\Institute;
 use App\User;
 use App\VerifyCode;
 use App\VerificationCode;
+use App\RegistrationCode;
+use App\Teacher;
+use App\Student;
+use Carbon\Carbon;
 
 use Hash;
 class UsersController extends BaseController {
@@ -21,7 +25,7 @@ class UsersController extends BaseController {
     $this->beforeFilter('userAccess',array('only'=> array('show','create','edit','update','delete')));*/
     //5.5
     //$this->middleware('csrf', array('on'=>'post'));
-    $this->middleware('auth', array('only'=>array('show','create','edit','update')));
+    $this->middleware('auth', array('only'=>array('show','create','edit','update','showCodes','generateRegistrationCode','deleteCode')));
   }
   /**
   * Display a listing of the resource.
@@ -71,7 +75,7 @@ class UsersController extends BaseController {
       }
       else {
         \Session::put('inName', $institute->name);
-        return Redirect::to('/dashboard')->with('success','You are now logged in.');
+        return Redirect::to($this->roleDashboard())->with('success','You are now logged in.');
       }
 
     } else {
@@ -119,7 +123,7 @@ class UsersController extends BaseController {
         
 
        \Session::put('inName', $institute->name);
-        return Redirect::to('/dashboard')->with('success','You are now logged in.');
+        return Redirect::to($this->roleDashboard())->with('success','You are now logged in.');
      }else{
 
        return Redirect::to('/')
@@ -153,7 +157,7 @@ class UsersController extends BaseController {
         $login = Auth::user()->group;
         \Session::put('name', $name);
         \Session::put('userRole', $login);
-        return redirect('/dashboard');
+        return redirect($this->roleDashboard());
       }
 
     }
@@ -224,7 +228,7 @@ class UsersController extends BaseController {
             }
             else {
               $institute=new Institute;
-              $institute->name="IctVission";
+$institute->name="The Mango Tree Girls School";
               \Session::put('inName', $institute->name);
               return Redirect::to('/institute')->with('error','Please provide institute information!');
 
@@ -232,7 +236,7 @@ class UsersController extends BaseController {
           }
           else {
             \Session::put('inName', $institute->name);
-            return Redirect::to('/dashboard')->with('success','You are now logged in.');
+            return Redirect::to($this->roleDashboard())->with('success','You are now logged in.');
           }
       }
     }else{
@@ -255,14 +259,28 @@ class UsersController extends BaseController {
         $login = Auth::user()->group;
         \Session::put('name', $name);
         \Session::put('userRole', $login);
-        return redirect('/dashboard');
+        return redirect($this->roleDashboard());
       }
-      return redirect('/dashboard');
+      return redirect($this->roleDashboard());
     }
     request()->session()->flush();
     \Auth::logout();
     return redirect('/')->with('message', 'Your are now logged out!');
   } 
+
+  protected function roleDashboard() {
+    $role = strtolower(Auth::user()->group);
+    switch ($role) {
+      case 'teacher':
+        return '/teacher/dashboard';
+      case 'student':
+        return '/student/dashboard';
+      case 'accountant':
+        return '/accountant/dashboard';
+      default:
+        return '/dashboard';
+    }
+  }
   public function dologin($id,$usr_id) {
     $user = User::find($id);
     request()->session()->forget('isAdmin');
@@ -417,5 +435,205 @@ class UsersController extends BaseController {
 
         return $code;
     }
+
+   /**
+   * Signup page for teachers/students using a secret registration code.
+   *
+   * @return Response
+   */
+   public function showSignup()
+   {
+     $institute = Institute::select('name')->first();
+     if(!$institute) {
+       $institute = new Institute;
+       $institute->name = "The Mango Tree Girls School";
+     }
+     return view('auth.signup', compact('institute'));
+   }
+
+   public function processSignup(request $request)
+   {
+     $rules = [
+       'code'     => 'required|max:32',
+       'login'    => 'required|max:20|unique:users,login',
+       'email'    => 'nullable|email|max:100',
+       'password' => 'required|min:6|max:64',
+       'confirm'  => 'required|same:password',
+     ];
+     $validator = \Validator::make(Input::all(), $rules);
+     if ($validator->fails()) {
+       return Redirect::to('/signup')->withInput(Input::all())->withErrors($validator);
+     }
+
+     $rCode = RegistrationCode::where('code', Input::get('code'))->first();
+     if (!$rCode || $rCode->status != 'unused' || ($rCode->expires_at && $rCode->expires_at < Carbon::now())) {
+       return Redirect::to('/signup')->withInput(Input::all())->with('error', 'The registration code is invalid, already used or expired.');
+     }
+
+     $role = $rCode->role;
+     $person = $role == 'Teacher' ? Teacher::find($rCode->group_id) : Student::find($rCode->group_id);
+     if (!$person) {
+       return Redirect::to('/signup')->withInput(Input::all())->with('error', 'The account linked to this code no longer exists.');
+     }
+
+     $existing = User::where('group', $role)->where('group_id', $rCode->group_id)->count();
+     if ($existing > 0) {
+       return Redirect::to('/signup')->withInput(Input::all())->with('error', 'An account already exists for this person.');
+     }
+
+     $user = new User;
+     $user->firstname = $person->firstName;
+     $user->lastname  = $person->lastName;
+     $user->desc      = '';
+     $user->login     = Input::get('login');
+     $user->email     = Input::get('email') ?: NULL;
+     $user->group     = $role;
+     $user->group_id  = $rCode->group_id;
+     $user->access    = 1;
+     $user->password  = Hash::make(Input::get('password'));
+     $user->save();
+
+     $rCode->status   = 'used';
+     $rCode->used_by  = $user->id;
+     $rCode->used_at  = Carbon::now();
+     $rCode->save();
+
+     if (\Auth::loginUsingId($user->id)) {
+       $name = $user->firstname.' '.$user->lastname;
+       \Session::put('name', $name);
+       \Session::put('userRole', $user->group);
+       $institute = Institute::select('name')->first();
+       \Session::put('inName', $institute ? $institute->name : '');
+       return Redirect::to($this->roleDashboard())->with('success', 'Signup complete. You are now logged in.');
+     }
+
+     return Redirect::to('/')->with('success', 'Account created successfully. You can now login.');
+   }
+
+   /**
+   * First-run admin bootstrap page (only available when no admin exists).
+   *
+   * @return Response
+   */
+   public function showSetup()
+   {
+     if (User::where('group', 'Admin')->count() > 0) {
+       return Redirect::to('/');
+     }
+     $institute = Institute::select('name')->first();
+     if(!$institute) {
+       $institute = new Institute;
+       $institute->name = "The Mango Tree Girls School";
+     }
+     return view('auth.setup', compact('institute'));
+   }
+
+   public function processSetup(request $request)
+   {
+     if (User::where('group', 'Admin')->count() > 0) {
+       return Redirect::to('/')->with('error', 'An administrator account already exists.');
+     }
+
+     if (Input::get('setup_key') != \Config::get('app.admin_setup_key')) {
+       return Redirect::to('/setup')->withInput(Input::all())->with('error', 'The setup key is incorrect.');
+     }
+
+     $rules = [
+       'firstname' => 'required|max:20',
+       'lastname'  => 'required|max:20',
+       'login'     => 'required|max:20|unique:users,login',
+       'email'     => 'required|email|max:100',
+       'password'  => 'required|min:6|max:64',
+       'confirm'   => 'required|same:password',
+     ];
+     $validator = \Validator::make(Input::all(), $rules);
+     if ($validator->fails()) {
+       return Redirect::to('/setup')->withInput(Input::all())->withErrors($validator);
+     }
+
+     $user = new User;
+     $user->firstname = Input::get('firstname');
+     $user->lastname  = Input::get('lastname');
+     $user->desc      = '';
+     $user->login     = Input::get('login');
+     $user->email     = Input::get('email');
+     $user->group     = 'Admin';
+     $user->access    = 1;
+     $user->password  = Hash::make(Input::get('password'));
+     $user->save();
+
+     \Session::put('name', $user->firstname.' '.$user->lastname);
+     \Session::put('userRole', 'Admin');
+     $institute = Institute::select('name')->first();
+     \Session::put('inName', $institute ? $institute->name : 'The Mango Tree Girls School');
+
+     if (\Auth::loginUsingId($user->id)) {
+       return Redirect::to('/dashboard')->with('success', 'Administrator account created. Welcome!');
+     }
+     return Redirect::to('/')->with('success', 'Administrator account created. You can now login.');
+   }
+
+   /**
+   * Admin page listing all registration codes and code generation.
+   *
+   * @return Response
+   */
+   public function showCodes()
+   {
+     if (\Auth::user()->group != 'Admin') {
+       return Redirect::to('/');
+     }
+     $codes    = RegistrationCode::orderBy('id', 'desc')->get();
+     $teachers = Teacher::all(['id','firstName','lastName']);
+     $students = Student::all(['id','firstName','lastName']);
+     return View('app.codes', compact('codes', 'teachers', 'students'));
+   }
+
+   public function generateRegistrationCode(request $request)
+   {
+     if (\Auth::user()->group != 'Admin') {
+       return Redirect::to('/');
+     }
+     $role     = Input::get('role');
+     $group_id = (int) Input::get('group_id');
+     if (!in_array($role, ['Teacher', 'Student']) || $group_id <= 0) {
+       return Redirect::to('/users/codes')->with('error', 'Please select a role and a person.');
+     }
+
+     $person = $role == 'Teacher' ? Teacher::find($group_id) : Student::find($group_id);
+     if (!$person) {
+       return Redirect::to('/users/codes')->with('error', 'The selected record no longer exists.');
+     }
+
+     RegistrationCode::where('role', $role)->where('group_id', $group_id)->where('status', 'unused')->delete();
+
+     $block = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+     $code = substr(str_shuffle($block), 0, 4).'-'.substr(str_shuffle($block), 0, 4);
+
+     $rCode = new RegistrationCode;
+     $rCode->code        = $code;
+     $rCode->role        = $role;
+     $rCode->group_id    = $group_id;
+     $rCode->status      = 'unused';
+     $rCode->created_by  = \Auth::id();
+     $rCode->expires_at  = Carbon::now()->addDays(14);
+     $rCode->save();
+
+     $label = $role.' - '.$person->firstName.' '.$person->lastName;
+     return Redirect::to('/users/codes')->with('newCode', 'Registration code for '.$label.': '.$code);
+   }
+
+   public function deleteCode($id)
+   {
+     if (\Auth::user()->group != 'Admin') {
+       return Redirect::to('/');
+     }
+     $code = RegistrationCode::find($id);
+     if ($code) {
+       $code->status = 'cancelled';
+       $code->save();
+     }
+     return Redirect::to('/users/codes')->with('success', 'Registration code cancelled.');
+   }
 
 }

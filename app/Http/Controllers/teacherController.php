@@ -759,10 +759,62 @@ class teacherController extends BaseController {
 	$teachers = DB::table('teacher')
 	->select(DB::raw('teacher.*'))
 	->get();
+
+	$terms = getterms();
 	//dd($teachers);
 	$timetable=array();
-	return View("app.teacherTimetable",compact("classes","sections","teachers","subjects","timetable"));
+	return View("app.teacherTimetable",compact("classes","sections","teachers","subjects","terms","timetable"));
 
+	}
+
+	public function manage_timetable()
+	{
+		$classes  = DB::table('Class')->orderBy('code')->get();
+		$sections = DB::table('section')->orderBy('class_code')->get();
+		$teachers = DB::table('teacher')->get();
+		$subjects = DB::table('Subject')->get();
+		$terms    = getterms();
+
+		$classFilter    = Input::get('class');
+		$sectionFilter  = Input::get('section');
+		$teacherFilter  = Input::get('teacher');
+		$termFilter     = Input::get('term');
+		if ($termFilter === null || $termFilter === '') {
+			$termFilter = '1';
+		}
+
+		$query = DB::table('timetable')
+			->join('teacher', 'timetable.teacher_id', '=', 'teacher.id')
+			->join('Subject', 'Subject.id', '=', 'timetable.subject_id')
+			->join('Class', 'Class.code', '=', 'timetable.class_id')
+			->join('section', 'section.id', '=', 'timetable.section_id')
+			->select('timetable.*',
+				'teacher.firstName',
+				'teacher.lastName',
+				'Subject.name as subname',
+				'Class.name as classname',
+				'Class.code as class_code',
+				'section.name as section_name');
+
+		if ($classFilter != '') {
+			$query->where('timetable.class_id', $classFilter);
+		}
+		if ($sectionFilter != '') {
+			$query->where('timetable.section_id', $sectionFilter);
+		}
+		if ($teacherFilter != '') {
+			$query->where('timetable.teacher_id', $teacherFilter);
+		}
+		if ($termFilter != '') {
+			$query->where('timetable.term', $termFilter);
+		}
+
+		$timetables = $query->orderBy('timetable.day')->get();
+
+		return View("app.timetableManage", compact(
+			'classes', 'sections', 'teachers', 'subjects', 'terms',
+			'timetables', 'classFilter', 'sectionFilter', 'teacherFilter', 'termFilter'
+		));
 	}
 
 	public function create_timetable()
@@ -782,6 +834,7 @@ class teacherController extends BaseController {
 		'startt' => 'required',
 		'endt' => 'required',
 		'day' => 'required',
+		'term' => 'required',
 		];
 		$validator = \Validator::make(Input::all(), $rules);
 		if ($validator->fails())
@@ -811,6 +864,8 @@ class teacherController extends BaseController {
 				$timetable->stattime= Input::get('startt');
 				$timetable->endtime= Input::get('endt');
 				$timetable->day = $day;
+				$timetable->term = Input::get('term', '1');
+				$timetable->color = $this->timetableDayColor($day);
 				$timetable->save();
 
 			} 
@@ -826,6 +881,7 @@ class teacherController extends BaseController {
 	}
 	public function view_timetable($id)
 	{
+		$term = Input::get('term', '1');
 		if(Input::get('class')!='' && Input::get('section')!=''){
            $teacher_name =  array();
 			$class = Input::get('class');
@@ -837,6 +893,7 @@ class teacherController extends BaseController {
 			->select('teacher.*','timetable.stattime','timetable.endtime','timetable.day','timetable.id as timetable_id','Subject.name AS subname' , 'section.name as section_id', 'section.class_code as classname')
 			->where('timetable.class_id',Input::get('class'))
 			->where('timetable.section_id',Input::get('section'))
+			->where('timetable.term',$term)
 			/*	->where('section',Input::get('section'))
 			->where('shift',Input::get('shift'))
 			->where('session',trim(Input::get('session')))*/
@@ -851,6 +908,7 @@ class teacherController extends BaseController {
 			->join('section', 'section.id', '=', 'timetable.section_id')
 			->select('teacher.*','timetable.stattime','timetable.endtime','timetable.day','timetable.id as timetable_id','Subject.name AS subname' , 'section.name as section_id', 'section.class_code as classname')
 			->where('timetable.teacher_id',$id)
+			->where('timetable.term',$term)
 			/*	->where('section',Input::get('section'))
 			->where('shift',Input::get('shift'))
 			->where('session',trim(Input::get('session')))*/
@@ -858,7 +916,34 @@ class teacherController extends BaseController {
 	    }
 		// $timetables = DB::table('timetable')->where('timetable.teacher_id',$id)->get();
 		//echo "<pre>";print_r($timetables); exit;
-		return View("app.teacherViewtimetable",compact('timetables','teacher_name','class'));
+		return View("app.teacherViewtimetable",compact('timetables','teacher_name','class','term'));
+	}
+
+	public function dashboard()
+	{
+		$teacher = Teacher::find(\Auth::user()->group_id);
+		if(!$teacher){
+			return Redirect::to('/dashboard');
+		}
+
+		$term1 = DB::table('timetable')->where('teacher_id',$teacher->id)->where('term','1')->count();
+		$term2 = DB::table('timetable')->where('teacher_id',$teacher->id)->where('term','2')->count();
+
+		$sections = DB::table('timetable')
+			->join('section','section.id','=','timetable.section_id')
+			->where('timetable.teacher_id',$teacher->id)
+			->select('section.id','section.name','section.class_code')
+			->distinct()
+			->get();
+
+		$subjects = DB::table('timetable')
+			->join('Subject','Subject.id','=','timetable.subject_id')
+			->where('timetable.teacher_id',$teacher->id)
+			->select('Subject.id','Subject.name','Subject.class')
+			->distinct()
+			->get();
+
+		return View('app.teacherDashboard',compact('teacher','term1','term2','sections','subjects'));
 	}
 
 	public function edit_timetable($timetable_id)
@@ -883,8 +968,10 @@ class teacherController extends BaseController {
 		->select(DB::raw('section.*'))->where('class_code',$timetable->class_id)
 		->get();
 
+		$terms = getterms();
+
 		//echo "<pre>";print_r($timetable);exit;
-		return View("app.timetableEdit",compact("classes","sections","teachers","subjects","timetable"));
+		return View("app.timetableEdit",compact("classes","sections","teachers","subjects","terms","timetable"));
 	}
 
 
@@ -905,6 +992,7 @@ class teacherController extends BaseController {
 		'startt' => 'required',
 		'endt' => 'required',
 		'day' => 'required',
+		'term' => 'required',
 		];
 		$validator = \Validator::make(Input::all(), $rules);
 		if ($validator->fails())
@@ -925,6 +1013,10 @@ class teacherController extends BaseController {
 				}
 				else {*/
 				//foreach($days as $day){
+				$day = $days;
+				if (is_array($day)) {
+					$day = count($day) ? $day[0] : '';
+				}
 
 				$timetable = Timetable::find(Input::get('tid'));
 				$timetable->teacher_id= Input::get('teacher');
@@ -933,7 +1025,9 @@ class teacherController extends BaseController {
 				$timetable->subject_id= Input::get('subject');
 				$timetable->stattime= Input::get('startt');
 				$timetable->endtime= Input::get('endt');
-				$timetable->day = Input::get('day');
+				$timetable->day = $day;
+				$timetable->term = Input::get('term', '1');
+				$timetable->color = $this->timetableDayColor($day);
 				$timetable->save();
 
 			//} 
@@ -961,6 +1055,27 @@ class teacherController extends BaseController {
 		}
 		return Redirect::to('/teacher/view-timetable/'.$teacher_id)->with("success","Time Table deleted Succesfully.");
 
+	}
+
+	/**
+	 * Return a colour for a timetable day so entries created/updated
+	 * through the UI match the seeded timetable palette.
+	 *
+	 * @param  string  $day
+	 * @return string
+	 */
+	protected function timetableDayColor($day = '')
+	{
+		$colors = [
+			'monday' => '#5bc0de',
+			'tuesday' => '#5cb85c',
+			'wednesday' => '#f0ad4e',
+			'thursday' => '#d9534f',
+			'friday' => '#428bca',
+			'saturday' => '#9966cc',
+			'sunday' => '#b0b0b0',
+		];
+		return isset($colors[$day]) ? $colors[$day] : '#999';
 	}
  		
 

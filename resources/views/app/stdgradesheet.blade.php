@@ -83,7 +83,7 @@
     <div class="resContainer">
         <div class="resTophdr">
             <div class="restopleft">
-            				<img src="{{url('/public/images/'.$student->photo)}}" alt="" class="resLogo">
+            				<img src="{{url('/images/'.$student->photo)}}" alt="" class="resLogo">
             </div><!-- end of restopleft -->
 
             <div class="restopleft rgttopleft">

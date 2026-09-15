@@ -63,7 +63,7 @@
     <![endif]-->
 
     <!-- The fav icon -->
-    <link rel="shortcut icon" href="img/favicon.ico">
+    <link rel="icon" type="image/png" href="img/favicon.png">
 
 </head>
 
@@ -367,7 +367,7 @@
         <p class="col-md-9 col-sm-9 col-xs-12 copyright"> <a href="#" target="_blank">{{Session::get('inName')}}</a> &copy;2017</p>
 
         <p class="col-md-3 col-sm-3 col-xs-12 powered-by">Developed by: <a
-                    href="http://ictvision.net/">IctVision</a></p>
+                    href="#">The Mango Tree Girls School</a></p>
     </footer>
 
 </div><!--/.fluid-container-->

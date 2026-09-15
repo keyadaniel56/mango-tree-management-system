@@ -19,15 +19,16 @@
    }else{
     $class ='';
    }
-   
-
+   $term = isset($term) ? $term : '1';
+   $termBaseUrl = url(Request::path());
+   $termParams  = request()->all();
     @endphp
  
 <div class="row">
   <div class="box col-md-12">
     <div class="box-inner">
       <div data-original-title="" class="box-header well">
-        <h2><i class="glyphicon glyphicon-user"></i> @if($class=='') Teacher Timetable @else Student Timetable @endif</h2>
+        <h2><i class="glyphicon glyphicon-user"></i> @if($class=='') Teacher Timetable @else Student Timetable @endif - {{ termname($term) }}</h2>
 
       </div>
       <div class="box-content">
@@ -41,6 +42,14 @@
           </ul>
         </div>
         @endif
+  <div class="row">
+    <div class="col-md-12">
+      @foreach(getterms() as $termValue => $termLabel)
+        <a href="{{ $termBaseUrl.'?'.http_build_query(array_merge($termParams, ['term' => $termValue])) }}" class="btn @if($term == $termValue) btn-primary @else btn-default @endif">{{ $termLabel }}</a>
+      @endforeach
+    </div>
+  </div>
+  <br>
   <ul class="nav nav-pills">
     <li class="nav-item"><a class="nav-link active" data-toggle="pill" href="#home">Monday</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="pill" href="#menu1">Tuesday</a></li>

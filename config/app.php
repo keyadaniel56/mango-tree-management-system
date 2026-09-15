@@ -17,6 +17,8 @@ return [
 
     'otp' => env('OTP','No'),
 
+    'admin_setup_key' => env('ADMIN_SETUP_KEY'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

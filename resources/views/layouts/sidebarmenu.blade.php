@@ -2,12 +2,8 @@
 --}}
 <div class="logo">
   <a  class="js-arrow" href="#">
-    
-    @if(Session::get('inName')=='')
-    <img src="images/icon/logo-white.png" alt="CoolAdmin" />
-    @else
-      <h2>{{Session::get('inName')}}</h2>
-    @endif
+    <img src="images/icon/logo-white.png" alt="The Mango Tree Girls School" />
+    <h2>@if(Session::get('inName')=='') The Mango Tree Girls School @else {{Session::get('inName')}} @endif</h2>
     </a>
 </div>
 <div class="menu-sidebar2__content js-scrollbar1">
@@ -20,9 +16,56 @@
 </div>--}}
 <nav class="navbar-sidebar2">
   <ul class="list-unstyled navbar__list">
-
-    <li class="{{ Request::is('dashboard') ? 'active' : '' }} has-sub"><a class="js-arrow" href="{{url('/dashboard')}}"> <i class="fas fa-tachometer-alt"></i><span> Dashboard</span></a>
+    @php
+      $dashUrl = '/dashboard';
+      $dashActive = Request::is('/dashboard');
+      if (Session::get('userRole') == 'Teacher') {
+        $dashUrl = '/teacher/dashboard'; $dashActive = Request::is('/teacher/dashboard');
+      } elseif (Session::get('userRole') == 'Student') {
+        $dashUrl = '/student/dashboard'; $dashActive = Request::is('/student/dashboard');
+      } elseif (Session::get('userRole') == 'Accountant') {
+        $dashUrl = '/accountant/dashboard'; $dashActive = Request::is('/accountant/dashboard');
+      }
+    @endphp
+    <li class="{{ $dashActive ? 'active' : '' }} has-sub"><a class="js-arrow" href="{{url($dashUrl)}}"> <i class="fas fa-tachometer-alt"></i><span> Dashboard</span></a>
     </li>
+    @if (Session::get('userRole') == "Teacher")
+      <li class="has-sub">
+        <a  class="js-arrow" href="#"><i class="glyphicon glyphicon-time"></i><span> My Timetable</span></a>
+        <ul class="list-unstyled navbar__sub-list js-sub-list">
+          @if(\Auth::user()->group_id)
+            <li><a href="{{url('/teacher/view-timetable/'.\Auth::user()->group_id.'?term=1')}}">First Term</a></li>
+            <li><a href="{{url('/teacher/view-timetable/'.\Auth::user()->group_id.'?term=2')}}">Second Term</a></li>
+          @endif
+          <li><a href="{{url('/teacher/diary/show/'.\Auth::user()->group_id)}}">My Diary</a></li>
+        </ul>
+      </li>
+    @endif
+    @if (Session::get('userRole') == "Student")
+      <li class="has-sub">
+        <a  class="js-arrow" href="#"><i class="glyphicon glyphicon-calendar"></i><span> My Timetable</span></a>
+        <ul class="list-unstyled navbar__sub-list js-sub-list">
+          @if(\App\Student::find(\Auth::user()->group_id))
+            <?php $stuSection = \App\Student::find(\Auth::user()->group_id)->section; if(!$stuSection){$stuSection='';} ?>
+            @if($stuSection != '')
+              <li><a href="{{url('/section/view-timetable/'.$stuSection.'?term=1')}}">First Term</a></li>
+              <li><a href="{{url('/section/view-timetable/'.$stuSection.'?term=2')}}">Second Term</a></li>
+            @endif
+          @endif
+        </ul>
+      </li>
+    @endif
+    @if (Session::get('userRole') == "Accountant")
+      <li class="has-sub">
+        <a  class="js-arrow" href="#"><i class="glyphicon glyphicon-usd"></i><span> Accounting</span></a>
+        <ul class="list-unstyled navbar__sub-list js-sub-list">
+          <li><a href="{{url('/accounting')}}">Accounting Home</a></li>
+          <li><a href="{{url('/accounting/income')}}">Income</a></li>
+          <li><a href="{{url('/accounting/expence')}}">Expense</a></li>
+          <li><a href="{{url('/accounting/report')}}">Reports</a></li>
+        </ul>
+      </li>
+    @endif
     @if (Session::get('userRole') =="Director")
       <li class="has-sub">
         <a  class="js-arrow" href="#"><i class="glyphicon glyphicon-cog"></i><span> Settings</span></a>
@@ -52,8 +95,11 @@
           @if(in_array('teacher_view',$permision))
             <li class="{{ Request::is('teacher/list') ? 'active' : '' }}"><a href="{{url('/teacher/list')}}">Teacher List</a></li>
           @endif
+          @if(in_array('teacher_timetable_view',$permision))
+            <li class="{{ Request::is('timetable/list') ? 'active' : '' }}"><a href="{{url('/timetable/list')}}">Timetable List</a></li>
+          @endif
           @if(in_array('teacher_timetable_add',$permision))
-            <li class="{{ Request::is('teacher/create-timetable') ? 'active' : '' }}"><a href="{{url('/teacher/create-timetable')}}">Timetable Management</a></li>
+            <li class="{{ Request::is('teacher/create-timetable') ? 'active' : '' }}"><a href="{{url('/teacher/create-timetable')}}">Add Timetable</a></li>
           @endif
         </ul>
       </li>

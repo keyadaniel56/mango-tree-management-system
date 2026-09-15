@@ -21,35 +21,65 @@ class UserTableSeeder extends Seeder {
 
 		$institute  = Institute::select('*');
 		if($institute->count()==0){
-			Institute::create(array('name'=>'Ict Vision','establish'=>'2017','email'=>'info@ictinnovations.com','web' => 'http://ictvision.net/','phoneNo'=>'923125555555','address'=>'Khawar center Multan'));
+			Institute::create(array('name'=>'The Mango Tree Girls School','establish'=>'2017','email'=>'info@mangotreegirls.ac.ke','web' => 'http://www.mangotreegirls.ac.ke/','phoneNo'=>'254712345678','address'=>'Nairobi, Kenya'));
 	    }
 
 	      	$student_path = 'sql/student.sql';
-        	DB::unprepared(file_get_contents($student_path));
-        	$this->command->info('Student table seeded!');
+	      	$class_path = 'sql/class.sql';
+	      	$section_path = 'sql/section.sql';
+	      	$subjects_path = 'sql/subjects.sql';
+	      	$marks_path = 'sql/marks.sql';
+	      	$grade_path = 'sql/grade.sql';
+	      	$teacher_path = 'sql/teacher.sql';
 
-        	$class_path = 'sql/class.sql';
-        	DB::unprepared(file_get_contents($class_path));
-        	$this->command->info('class table seeded!');
+	      	foreach ([
+	      		'student.sql' => $student_path,
+	      		'class.sql' => $class_path,
+	      		'section.sql' => $section_path,
+	      		'subjects.sql' => $subjects_path,
+	      		'marks.sql' => $marks_path,
+	      		'grade.sql' => $grade_path,
+	      		'teacher.sql' => $teacher_path,
+	      	] as $sqlKey => $sqlPath) {
+	      		if (file_exists($sqlPath) && ! $this->sqlTableIsSeeded($sqlKey)) {
+	      			DB::unprepared(file_get_contents($sqlPath));
+	      			$this->command->info($sqlKey.' table seeded!');
+	      		} elseif (! file_exists($sqlPath)) {
+	      			$this->command->warn($sqlKey.' not found, skipping');
+	      		} else {
+	      			$this->command->info($sqlKey.' already seeded, skipping');
+	      		}
+	      	}
+	}
 
-        	$section_path = 'sql/section.sql';
-        	DB::unprepared(file_get_contents($section_path));
-        	$this->command->info('section table seeded!');
+	/**
+	 * Best-effort check whether a sql dump has already been applied,
+	 * so the seeder can be run more than once.
+	 *
+	 * @param  string  $sqlKey
+	 * @return bool
+	 */
+	protected function sqlTableIsSeeded($sqlKey)
+	{
+		$tables = [
+			'student.sql' => 'Student',
+			'class.sql' => 'Class',
+			'section.sql' => 'section',
+			'subjects.sql' => 'Subject',
+			'marks.sql' => 'marks',
+			'grade.sql' => 'GPA',
+			'teacher.sql' => 'teacher',
+		];
 
-        	$subjects_path = 'sql/subjects.sql';
-        	DB::unprepared(file_get_contents($subjects_path));
-        	$this->command->info('subject table seeded!');
+		$table = $tables[$sqlKey] ?? null;
+		if (! $table) {
+			return false;
+		}
 
-        	$marks_path = 'sql/marks.sql';
-        	DB::unprepared(file_get_contents($marks_path));
-        	$this->command->info('marks table seeded!');
-
-        	$grade_path = 'sql/grade.sql';
-        	DB::unprepared(file_get_contents($grade_path));
-        	$this->command->info('grade table seeded!');
-
-        	$teacher_path = 'sql/teacher.sql';
-        	DB::unprepared(file_get_contents($teacher_path));
-        	$this->command->info('teacher table seeded!');
+		try {
+			return DB::table($table)->count() > 0;
+		} catch (\Exception $e) {
+			return false;
+		}
 	}
 }

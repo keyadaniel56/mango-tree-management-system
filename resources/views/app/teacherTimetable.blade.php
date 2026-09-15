@@ -150,6 +150,17 @@ b {color:red}
               </div>
             </div>
 
+            <div class="col-md-4">
+              <div class="form-group ">
+                <label for="term">Term <b>*</b></label>
+                <select name="term" class="form-control" required>
+                @foreach($terms as $termValue => $termLabel)
+                <option value="{{ $termValue }}" @if($timetable->term == $termValue) selected @endif>{{ $termLabel }}</option>
+                @endforeach
+                </select>
+              </div>
+            </div>
+
           </div>
         </div>
         <div class="clearfix"></div>
@@ -274,6 +285,17 @@ b {color:red}
                 <option value="friday"    @if(old('day')=="friday")    selected @endif>Friday</option>
                 <option value="saturday"  @if(old('day')=="saturday")  selected @endif>Saturday</option>
                 <option value="sunday"    @if(old('day')=="sunday")    selected @endif>Sunday</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="form-group ">
+                <label for="term">Term <b>*</b></label>
+                <select name="term" class="form-control" required>
+                @foreach($terms as $termValue => $termLabel)
+                <option value="{{ $termValue }}" @if(old('term')==$termValue) selected @endif>{{ $termLabel }}</option>
+                @endforeach
                 </select>
               </div>
             </div>

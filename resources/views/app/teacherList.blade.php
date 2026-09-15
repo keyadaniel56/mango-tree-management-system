@@ -143,6 +143,8 @@
                                                         <a title='Delete' class='btn btn-danger' href='#' onclick="confirmed('{{$teacher->id}}')"> <i class="glyphicon glyphicon-trash icon-white"></i></a>&nbsp&nbsp
                                                         <a title='view timetable' class='btn btn-success' href='{{url("/teacher/view-timetable")}}/{{$teacher->id}}'> <i class="glyphicon glyphicon-eye-open icon-white"></i></a>&nbsp&nbsp
                                                         <a title='Mobile Access'  class='btn btn-success' href='{{url("/teacher/access")}}/{{$teacher->id}}'> <i class="glyphicon glyphicon-phone"></i></a>&nbsp&nbsp
+                                                        <a title='Portal Code' class='btn btn-warning' onclick="event.preventDefault(); document.getElementById('codeform-{{$teacher->id}}').submit();" href='#'> <i class="glyphicon glyphicon-qrcode"></i></a>
+                                                        <form id="codeform-{{$teacher->id}}" method="post" action="{{ url('/users/codes/generate') }}" style="display:none;">{{ csrf_field() }}<input type="hidden" name="role" value="Teacher"><input type="hidden" name="group_id" value="{{ $teacher->id }}"></form>&nbsp&nbsp
                                                         <a title='Create Diary'   class='btn btn-primary' href='{{url("/teacher/diary")}}/{{$teacher->id}}'> <i class="glyphicon glyphicon-folder-open"></i></a>&nbsp&nbsp
                                                         <a title='View Diary'     class='btn btn-warning' href='{{url("/teacher/diary/show")}}/{{$teacher->id}}'> <i class="glyphicon glyphicon-zoom-in"></i></a>
                                                       </td>
