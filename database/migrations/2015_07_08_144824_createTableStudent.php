@@ -45,7 +45,7 @@ class CreateTableStudent extends Migration {
 			$table->string('parmanentAddress',500);
                         $table->string('isActive',10);
 			$table->timestamps();
-			$table->index('regiNo');
+			$table->unique('regiNo');
 		});
 	}
 
