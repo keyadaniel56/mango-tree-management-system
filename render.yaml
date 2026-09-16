@@ -6,11 +6,14 @@
 # (no managed MySQL) or persistent disks, so:
 #   * the single web service runs on `plan: free`
 #   * MySQL lives on an external free provider - Aiven for MySQL 8
-#     (aiven.io/free-mysql-database), which enforces TLS (--ssl-mode=REQUIRED).
+#     (aiven.io/free-mysql-database)
 #
-# Before applying this Blueprint, create the Aiven MySQL service and the
-# `schoolapi` database/user, then fill the sync:false variables in the Render
-# dashboard (host, port, credentials and the base64 TLS CA bundle).
+# Before creating the service, the Aiven user must be created with the
+# `mysql_native_password` authentication method: PHP 7.2 (the application
+# runtime) cannot authenticate against MySQL 8's default
+# `caching_sha2_password` plugin. The Aiven free tier exposes the database
+# over plaintext TCP (no TLS offered on the public route), so the connection
+# from Render is unencrypted - acceptable for a demo, not for production.
 #
 # Commands:
 #   render blueprints validate ./render.yaml
@@ -54,7 +57,8 @@ services:
       - key: DB_CONNECTION
         value: mysql
       # -- Aiven for MySQL (create the service in the Aiven console first) --
-      # Hostname like mysql-<project>-<service>.aivencloud.com, port like 23935
+      # The user MUST use mysql_native_password authentication (PHP 7.2).
+      # Hostname like mysql-<project>-<service>.aivencloud.com, port like 10777
       - key: DB_HOST
         sync: false
       - key: DB_PORT
@@ -64,11 +68,6 @@ services:
       - key: DB_USERNAME
         sync: false
       - key: DB_PASSWORD
-        sync: false
-      # base64 (single line, `base64 -w0 ca.pem`) of the CA bundle Aiven
-      # provides on the service Overview page -> CA Certificate -> Download.
-      # docker/start.sh decodes it and enables TLS with certificate checks.
-      - key: MYSQL_SSL_CA_B64
         sync: false
       - key: SESSION_DRIVER
         value: file

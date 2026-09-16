@@ -52,11 +52,11 @@ return [
             'prefix' => '',
             'strict' => false,
             'engine' => null,
-            // TLS options for managed MySQL providers that require encryption
-            // (e.g. the free Aiven for MySQL tier). docker/start.sh exports
-            // MYSQL_ATTR_SSL_CA (path) and MYSQL_ATTR_SSL_VERIFY_SERVER_CERT
-            // on Render; both are unset in local development, so the options
-            // below are simply dropped there via array_filter().
+            // Optional TLS for managed MySQL providers that require it.
+            // docker/start.sh exports MYSQL_ATTR_SSL_CA (path) and
+            // MYSQL_ATTR_SSL_VERIFY_SERVER_CERT when a CA bundle is supplied;
+            // both are unset by default, so array_filter() drops them and the
+            // connection stays plaintext (as used on the free Aiven tier).
             'options' => array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
                 PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT'),
